@@ -1,4 +1,6 @@
 -- Tray and Hand Item Management
+local config = require 'config.client'
+local sharedConfig = require 'config.shared'
 
 function UpdateHandVisuals()
   local ped = PlayerPedId()
@@ -15,7 +17,7 @@ function UpdateHandVisuals()
   end
 
   -- 1. Play Animation
-  PlayAnimUpper(ped, Config.Anims.Tray.dict, Config.Anims.Tray.anim, true)
+  PlayAnimUpper(ped, config.Anims.Tray.dict, config.Anims.Tray.anim, true)
 
   -- 2. Spawn Tray Prop
   local trayHash = joaat("prop_food_tray_01")
@@ -32,14 +34,14 @@ function UpdateHandVisuals()
 
   -- 3. Spawn Items on Tray
   local offsets = {
-    vector3(0.0, 0.12, 0.05),        -- Center Front
-    vector3(-0.12, -0.08, 0.05),     -- Left Back
-    vector3(0.12, -0.08, 0.05)       -- Right Back
+    vector3(0.0, 0.12, 0.05),    -- Center Front
+    vector3(-0.12, -0.08, 0.05), -- Left Back
+    vector3(0.12, -0.08, 0.05)   -- Right Back
   }
 
   for i, itemName in ipairs(State.handContent) do
-    if Config.Items[itemName] then
-      local propName = Config.Items[itemName].prop
+    if sharedConfig.Items[itemName] then
+      local propName = sharedConfig.Items[itemName].prop
       local hash = joaat(propName)
       lib.requestModel(hash)
 
@@ -55,17 +57,17 @@ end
 
 function ModifyHand(action, item)
   if action == 'add' then
-    if #State.handContent >= Config.MaxHandItems then
+    if #State.handContent >= sharedConfig.MaxHandItems then
       lib.notify({ type = 'error', description = 'Tray is full!' })
       return
     end
     table.insert(State.handContent, item)
-    lib.notify({ type = 'success', description = 'Added ' .. Config.Items[item].label })
+    lib.notify({ type = 'success', description = 'Added ' .. sharedConfig.Items[item].label })
   elseif action == 'remove' then
     for i, val in ipairs(State.handContent) do
       if val == item then
         table.remove(State.handContent, i)
-        lib.notify({ type = 'info', description = 'Removed ' .. Config.Items[item].label })
+        lib.notify({ type = 'info', description = 'Removed ' .. sharedConfig.Items[item].label })
         break
       end
     end

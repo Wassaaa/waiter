@@ -1,4 +1,6 @@
 -- Customer Spawning and Management
+local config = require 'config.client'
+local sharedConfig = require 'config.shared'
 
 function CustomerLeave(customer, reason)
   local ped = customer.ped
@@ -13,7 +15,7 @@ function CustomerLeave(customer, reason)
 
   if reason == "angry" and DoesEntityExist(ped) then
     lib.notify({ type = 'warning', description = 'Customer left angry!' })
-    PlayAnimUpper(ped, Config.Anims.Anger.dict, Config.Anims.Anger.anim)
+    PlayAnimUpper(ped, config.Anims.Anger.dict, config.Anims.Anger.anim)
     Wait(1500)
   end
 
@@ -28,7 +30,7 @@ function CustomerLeave(customer, reason)
 
   -- Walk to exit
   ClearPedTasksImmediately(ped)
-  TaskGoToCoordAnyMeans(ped, Config.EntranceCoords.x, Config.EntranceCoords.y, Config.EntranceCoords.z, 1.0, 0, false,
+  TaskGoToCoordAnyMeans(ped, config.EntranceCoords.x, config.EntranceCoords.y, config.EntranceCoords.z, 1.0, 0, false,
     786603, 0xbf800000)
 
   -- Final Delete
@@ -73,7 +75,7 @@ function StartCustomerLogic(customer)
 
     while #(GetEntityCoords(ped) - vector3(seat.coords.x, seat.coords.y, seat.coords.z)) > 1.7 do
       if not State.validSeats[customer.seatId] then return end
-      if (GetGameTimer() - walkStart) > Config.WalkTimeout then
+      if (GetGameTimer() - walkStart) > config.WalkTimeout then
         seat.isOccupied = false
         SafeDelete(ped)
         return
@@ -95,7 +97,7 @@ function StartCustomerLogic(customer)
     -- 3. Loop
     while DoesEntityExist(ped) and customer.status ~= "eating" do
       -- Patience Check
-      local maxWait = (customer.status == "waiting_order") and Config.PatienceOrder or Config.PatienceFood
+      local maxWait = (customer.status == "waiting_order") and config.PatienceOrder or config.PatienceFood
       if (GetGameTimer() - customer.patienceTimer) > maxWait then
         CustomerLeave(customer, "angry")
         return
@@ -103,9 +105,9 @@ function StartCustomerLogic(customer)
 
       -- Waving (Only if waiting for order)
       if customer.status == "waiting_order" then
-        Wait(math.random(Config.WaveIntervalMin, Config.WaveIntervalMax))
+        Wait(math.random(config.WaveIntervalMin, config.WaveIntervalMax))
         if DoesEntityExist(ped) and customer.status == "waiting_order" then
-          PlayAnimUpper(ped, Config.Anims.Wave.dict, Config.Anims.Wave.anim)
+          PlayAnimUpper(ped, config.Anims.Wave.dict, config.Anims.Wave.anim)
         end
       else
         Wait(1000)
@@ -150,18 +152,18 @@ function DeliverFood(customer)
       customer.status = "eating"
       lib.notify({ type = 'success', description = 'Order Delivered! Customer is happy.' })
 
-      -- TODO: Payment
-      -- TriggerServerEvent('waiter:pay', itemsDelivered * Config.PayPerItem)
+      -- Payment: Trigger server event
+      TriggerServerEvent('waiter:pay', itemsDelivered)
 
-      PlayAnimUpper(ped, Config.Anims.Eat.dict, Config.Anims.Eat.anim, true)
-      Wait(Config.EatTime)
+      PlayAnimUpper(ped, config.Anims.Eat.dict, config.Anims.Eat.anim, true)
+      Wait(config.EatTime)
 
       CustomerLeave(customer, "happy")
     else
       -- Partial Delivery
       local remainingStr = ""
       for _, v in pairs(customer.order) do
-        remainingStr = remainingStr .. Config.Items[v].label .. ", "
+        remainingStr = remainingStr .. sharedConfig.Items[v].label .. ", "
       end
 
       lib.notify({
@@ -174,7 +176,7 @@ function DeliverFood(customer)
     -- No Matches
     local orderStr = ""
     for _, v in pairs(customer.order) do
-      orderStr = orderStr .. Config.Items[v].label .. ", "
+      orderStr = orderStr .. sharedConfig.Items[v].label .. ", "
     end
     lib.notify({ type = 'error', description = 'Wrong Items! Customer needs: ' .. orderStr })
   end
@@ -190,10 +192,10 @@ function SpawnSingleCustomer()
   end
   if not seat then return end
 
-  local model = Config.Models[math.random(1, #Config.Models)]
+  local model = config.Models[math.random(1, #config.Models)]
   lib.requestModel(model)
-  local ped = CreatePed(4, joaat(model), Config.EntranceCoords.x, Config.EntranceCoords.y, Config.EntranceCoords.z,
-    Config.EntranceCoords.w, true, false)
+  local ped = CreatePed(4, joaat(model), config.EntranceCoords.x, config.EntranceCoords.y, config.EntranceCoords.z,
+    config.EntranceCoords.w, true, false)
 
   -- Make customer ghost through all furniture from the start
   for _, prop in pairs(State.spawnedProps) do
@@ -223,14 +225,14 @@ function SpawnSingleCustomer()
       distance = 2.0,
       canInteract = function() return customerData.status == "waiting_order" end,
       onSelect = function()
-        local itemCount = math.random(1, Config.MaxHandItems)
+        local itemCount = math.random(1, sharedConfig.MaxHandItems)
         local itemKeys = { 'burger', 'drink', 'fries' }
         local orderText = ""
 
         for i = 1, itemCount do
           local item = itemKeys[math.random(1, #itemKeys)]
           table.insert(customerData.order, item)
-          orderText = orderText .. Config.Items[item].label .. (i < itemCount and ", " or "")
+          orderText = orderText .. sharedConfig.Items[item].label .. (i < itemCount and ", " or "")
         end
 
         lib.notify({ title = 'New Order', description = orderText, type = 'info', duration = 10000 })

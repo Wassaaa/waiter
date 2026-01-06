@@ -1,11 +1,21 @@
 -- Main Client Entry Point
+local config = require 'config.client'
+local sharedConfig = require 'config.shared'
 
 -- Commands
 RegisterCommand('setuprest', function()
-  SetupRestaurant()
-end, false)
-
-RegisterCommand('newcustomer', function()
+  -- Optional: Check if player can work before setting up
+  if sharedConfig.JobName then
+    lib.callback('waiter:canWork', false, function(canWork, reason)
+      if canWork then
+        SetupRestaurant()
+      else
+        lib.notify({ type = 'error', description = reason })
+      end
+    end)
+  else
+    SetupRestaurant()
+  end
   SpawnSingleCustomer()
 end, false)
 
@@ -27,7 +37,7 @@ RegisterCommand('tunetray', function(source, args)
 
   AttachEntityToEntity(State.trayProp, PlayerPedId(), GetPedBoneIndex(PlayerPedId(), 57005), x, y, z, rx, ry, rz, true,
     true, false, true, 1, true)
-  print(string.format("Adjusted: %.2f %.2f %.2f | %.2f %.2f %.2f", x, y, z, rx, ry, rz))
+  lib.print.info(('Tray adjusted: %.2f %.2f %.2f | %.2f %.2f %.2f'):format(x, y, z, rx, ry, rz))
 end, false)
 
 -- Resource Cleanup
@@ -104,11 +114,16 @@ RegisterCommand('stealscene', function(source, args)
   lib.notify({ title = 'Scene Dumped', description = 'Radius: ' .. radius .. 'm (Check F8)', type = 'success' })
 end)
 
+-- Dependency checks
+lib.checkDependency('ox_lib', '3.0.0', true)
+lib.checkDependency('ox_target', '1.0.0', true)
+lib.checkDependency('qbx_core', '1.0.0', true)
+
 -- Auto-Start Restaurant (Debug)
-if Config.AutoStartRestaurant then
+if config.AutoStartRestaurant then
   CreateThread(function()
     Wait(1000)
-    print("^3[Dev] Auto-Starting Restaurant Setup...^7")
+    lib.print.info('Auto-Starting Restaurant Setup')
     SetupRestaurant()
   end)
 end

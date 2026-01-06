@@ -1,4 +1,4 @@
-Config = {
+return {
   -- Locations
   EntranceCoords      = vector4(-1266.05, -891.02, 10.48, 26.34),
   KitchenCoords       = vector4(-1273.61, -885.89, 10.93, 310.93),
@@ -29,13 +29,6 @@ Config = {
 
   KitchenGrill        = { type = 'kitchen', hash = joaat('prop_bbq_5'), coords = vector4(-1273.61, -885.89, 10.93, 310.93) },
 
-  -- Menu Items
-  Items               = {
-    burger = { label = 'Burger', price = 25, prop = 'prop_cs_burger_01' },
-    drink  = { label = 'Drink', price = 10, prop = 'prop_ecola_can' },
-    fries  = { label = 'Fries', price = 15, prop = 'prop_food_chips' }
-  },
-
   -- Timings (in milliseconds)
   SpawnInterval       = 10000,  -- Time between customer spawns
   WalkTimeout         = 60000,  -- Timeout if customer gets stuck
@@ -44,10 +37,6 @@ Config = {
   EatTime             = 10000,  -- How long customer takes to eat
   WaveIntervalMin     = 5000,   -- Min time between waves
   WaveIntervalMax     = 10000,  -- Max time between waves
-
-  -- Gameplay
-  PayPerItem          = 50, -- Money earned per item delivered
-  MaxHandItems        = 3,  -- Max items on tray at once
 
   -- Customer Models
   Models              = {

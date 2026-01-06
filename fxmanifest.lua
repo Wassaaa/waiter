@@ -11,8 +11,16 @@ shared_scripts {
   '@ox_lib/init.lua',
 }
 
-client_scripts {
+files {
   'config/client.lua',
+  'config/shared.lua',
+}
+
+server_scripts {
+  'server/main.lua',
+}
+
+client_scripts {
   'client/state.lua',
   'client/tray.lua',
   'client/customers.lua',
@@ -20,11 +28,8 @@ client_scripts {
   'client/main.lua',
 }
 
-server_scripts {
-  'server/main.lua',
-}
-
 dependencies {
   'ox_lib',
   'ox_target',
+  'qbx_core',
 }
