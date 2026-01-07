@@ -172,20 +172,14 @@ function SetupRestaurant()
   State.isRestaurantOpen = true
   lib.print.info(('Restaurant Open! Seats: %d'):format(#State.validSeats))
 
+  -- Start customer spawning on server
+  lib.callback.await('waiter:server:startCustomerSpawning', false)
+
   -- Thread: Keep world props deleted
   CreateThread(function()
     while State.isRestaurantOpen do
       DeleteWorldProps()
       Wait(2000)
-    end
-  end)
-
-  -- Thread: Spawn customers
-  CreateThread(function()
-    Wait(2000)
-    while State.isRestaurantOpen do
-      if State.isRestaurantOpen then SpawnSingleCustomer() end
-      Wait(config.SpawnInterval)
     end
   end)
 end

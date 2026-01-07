@@ -17,7 +17,9 @@ files {
 }
 
 server_scripts {
-  'server/*.lua',
+  'server/main.lua',
+  'server/furniture.lua',
+  'server/customers.lua',
 }
 
 client_scripts {

@@ -1,6 +1,7 @@
 return {
   -- Locations
   EntranceCoords      = vector4(-1266.05, -891.02, 10.48, 26.34),
+  ExitCoords          = vector4(-1258.44, -882.29, 10.91, 301.73),
   KitchenCoords       = vector4(-1273.61, -885.89, 10.93, 310.93),
   CleanupRadius       = 20.0,
 
@@ -38,6 +39,9 @@ return {
   EatTime             = 10000,  -- How long customer takes to eat
   WaveIntervalMin     = 5000,   -- Min time between waves
   WaveIntervalMax     = 10000,  -- Max time between waves
+  SitDelay            = 2000,   -- Delay after sitting before waiting for order
+  WalkoutTimeout      = 30000,  -- Max time for customer to walk out before forced cleanup
+  FadeoutDuration     = 1000,   -- Time for customer fadeout (in ms)
 
   -- Customer Models
   Models              = {
