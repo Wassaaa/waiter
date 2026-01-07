@@ -1,9 +1,9 @@
--- Server-side Payment Logic
+-- Waiter Job - Server Main
 lib.versionCheck('Wassaaa/waiter')
-lib.print.info('Server Started')
 
 local config = require 'config.shared'
 
+-- Functions
 ---@param source number Player source
 ---@return boolean canWork Whether player can work
 ---@return string? reason Reason if they can't work
@@ -17,12 +17,10 @@ local function canPlayerWork(source)
     return false, 'Player not found'
   end
 
-  -- Check if player has the correct job
   if player.PlayerData.job.name ~= config.JobName then
     return false, 'You must have the waiter job to earn money'
   end
 
-  -- Check if player is on duty (if required)
   if config.RequireOnDuty and not player.PlayerData.job.onduty then
     return false, 'You must be on duty to earn money'
   end
@@ -30,14 +28,13 @@ local function canPlayerWork(source)
   return true
 end
 
--- Payment Event
+-- Events
 ---@param itemsDelivered number Number of items delivered to customer
 RegisterNetEvent('waiter:pay', function(itemsDelivered)
   local src = source --[[@as number]]
 
   if not itemsDelivered or itemsDelivered < 1 then return end
 
-  -- Security: Validate player can work
   local canWork, reason = canPlayerWork(src)
   if not canWork then
     exports.qbx_core:Notify(src, reason, 'error')
@@ -48,8 +45,6 @@ RegisterNetEvent('waiter:pay', function(itemsDelivered)
   if not player then return end
 
   local amount = itemsDelivered * config.PayPerItem
-
-  -- Add money to player
   local success = player.Functions.AddMoney(config.PaymentType, amount, 'waiter-job-payment')
 
   if success then
@@ -59,110 +54,42 @@ RegisterNetEvent('waiter:pay', function(itemsDelivered)
   end
 end)
 
+---@param action string 'add', 'remove', or 'clear'
+---@param item string? Item name (for add/remove)
+RegisterNetEvent('waiter:server:modifyTray', function(action, item)
+  local src = source --[[@as number]]
+  local tray = Player(src).state.waiterTray or {}
+
+  if action == 'add' then
+    if not item or not config.Items[item] then
+      return exports.qbx_core:Notify(src, 'Invalid item', 'error')
+    end
+
+    if #tray >= config.MaxHandItems then
+      return exports.qbx_core:Notify(src, 'Tray is full!', 'error')
+    end
+
+    table.insert(tray, item)
+    exports.qbx_core:Notify(src, ('Added %s'):format(config.Items[item].label), 'success')
+  elseif action == 'remove' then
+    if not item then return end
+
+    for i, val in ipairs(tray) do
+      if val == item then
+        table.remove(tray, i)
+        exports.qbx_core:Notify(src, ('Removed %s'):format(config.Items[val].label), 'info')
+        break
+      end
+    end
+  elseif action == 'clear' then
+    tray = {}
+    exports.qbx_core:Notify(src, 'Tray cleared', 'info')
+  end
+
+  Player(src).state:set('waiterTray', tray, true)
+end)
+
+-- Callbacks
 lib.callback.register('waiter:canWork', function(source)
   return canPlayerWork(source)
-end)
-
--- Furniture Spawning
----@param source number Player who triggered setup
-lib.callback.register('waiter:server:setupRestaurant', function(source)
-  local clientConfig = require 'config.client'
-  local furniture = {}
-
-  lib.print.info('Spawning Furniture Server-Side')
-
-  -- Spawn all furniture pieces
-  for _, item in ipairs(clientConfig.Furniture) do
-    local obj = CreateObject(item.hash, item.coords.x, item.coords.y, item.coords.z, true, true, false)
-
-    lib.waitFor(function()
-      if DoesEntityExist(obj) then return true end
-    end, 'Failed to spawn furniture', 5000)
-
-    if DoesEntityExist(obj) then
-      SetEntityHeading(obj, item.coords.w)
-      FreezeEntityPosition(obj, true)
-
-      local netid = NetworkGetNetworkIdFromEntity(obj)
-      table.insert(furniture, {
-        netid = netid,
-        type = item.type,
-        coords = item.coords
-      })
-    end
-  end
-
-  -- Spawn kitchen grill
-  local cooker = clientConfig.KitchenGrill
-  local grill = CreateObject(cooker.hash, cooker.coords.x, cooker.coords.y, cooker.coords.z, true, true, false)
-
-  lib.waitFor(function()
-    if DoesEntityExist(grill) then return true end
-  end, 'Failed to spawn grill', 5000)
-
-  if DoesEntityExist(grill) then
-    SetEntityHeading(grill, cooker.coords.w)
-    FreezeEntityPosition(grill, true)
-
-    local grillNetId = NetworkGetNetworkIdFromEntity(grill)
-
-    -- Store in GlobalState for all clients
-    GlobalState.waiterFurniture = furniture
-    GlobalState.waiterGrill = grillNetId
-
-    lib.print.info(('Spawned %d furniture pieces and grill'):format(#furniture))
-    return true
-  end
-
-  return false
-end)
-
--- Cleanup Restaurant
-RegisterNetEvent('waiter:server:cleanup', function()
-  lib.print.info('Cleaning up restaurant server-side')
-
-  -- Delete furniture
-  if GlobalState.waiterFurniture then
-    for _, item in ipairs(GlobalState.waiterFurniture) do
-      local entity = NetworkGetEntityFromNetworkId(item.netid)
-      if DoesEntityExist(entity) then
-        DeleteEntity(entity)
-      end
-    end
-  end
-
-  -- Delete grill
-  if GlobalState.waiterGrill then
-    local grill = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
-    if DoesEntityExist(grill) then
-      DeleteEntity(grill)
-    end
-  end
-
-  GlobalState.waiterFurniture = nil
-  GlobalState.waiterGrill = nil
-end)
-
--- Cleanup on resource stop
-AddEventHandler('onResourceStop', function(resourceName)
-  if GetCurrentResourceName() ~= resourceName then return end
-
-  if GlobalState.waiterFurniture then
-    for _, item in ipairs(GlobalState.waiterFurniture) do
-      local entity = NetworkGetEntityFromNetworkId(item.netid)
-      if DoesEntityExist(entity) then
-        DeleteEntity(entity)
-      end
-    end
-  end
-
-  if GlobalState.waiterGrill then
-    local grill = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
-    if DoesEntityExist(grill) then
-      DeleteEntity(grill)
-    end
-  end
-
-  GlobalState.waiterFurniture = nil
-  GlobalState.waiterGrill = nil
 end)

@@ -44,24 +44,34 @@ end
 function DeleteWorldProps()
   local propsToDelete = {
     joaat('prop_chair_01a'),
-    joaat('prop_table_01')
+    joaat('prop_table_01'),
   }
 
-  -- Only delete world props that are NOT at our furniture coordinates
-  local radiusCheck = 100.0 -- Check in a radius around restaurant
-  local centerCoord = config.EntranceCoords
+  local centerCoord = vector3(config.EntranceCoords.x, config.EntranceCoords.y, config.EntranceCoords.z)
+  local deletedCount = 0
 
-  for _, hash in ipairs(propsToDelete) do
-    local obj = GetClosestObjectOfType(centerCoord.x, centerCoord.y, centerCoord.z, radiusCheck, hash, false, false,
-      false)
+  -- Get ALL objects in the world
+  local allObjects = GetGamePool('CObject')
 
-    while DoesEntityExist(obj) do
-      local objCoords = GetEntityCoords(obj)
+  for _, obj in ipairs(allObjects) do
+    local model = GetEntityModel(obj)
+    local coords = GetEntityCoords(obj)
+    local dist = #(coords - centerCoord)
+
+    -- Check if this object is one of our target hashes and within radius
+    local isTargetHash = false
+    for _, hash in ipairs(propsToDelete) do
+      if model == hash then
+        isTargetHash = true
+        break
+      end
+    end
+
+    if isTargetHash and dist <= config.CleanupRadius then
+      -- Check if this is one of OUR spawned entities
       local isOurFurniture = false
-
-      -- Check if this object is at one of our furniture spawn points
-      for _, item in ipairs(config.Furniture) do
-        if #(objCoords - vector3(item.coords.x, item.coords.y, item.coords.z)) < 0.5 then
+      for _, spawnedProp in ipairs(State.spawnedProps) do
+        if obj == spawnedProp then
           isOurFurniture = true
           break
         end
@@ -70,12 +80,14 @@ function DeleteWorldProps()
       if not isOurFurniture then
         SetEntityAsMissionEntity(obj, true, true)
         DeleteObject(obj)
+        DeleteEntity(obj)
+        deletedCount = deletedCount + 1
       end
-
-      -- Find next closest (skip the one we just processed)
-      obj = GetClosestObjectOfType(centerCoord.x, centerCoord.y, centerCoord.z, radiusCheck, hash, false, false, false)
-      if isOurFurniture then break end -- Don't keep looping if we found our furniture
     end
+  end
+
+  if deletedCount > 0 then
+    lib.print.info(('Cleaned up %d world props'):format(deletedCount))
   end
 end
 
@@ -84,46 +96,37 @@ function SetupRestaurant()
   if GlobalState.waiterFurniture then
     lib.notify({ type = 'info', description = 'Restaurant is already set up' })
 
-    -- Just get the existing furniture from GlobalState
+    -- Get existing furniture from GlobalState and populate our tracking
     local furniture = GlobalState.waiterFurniture
     for _, item in ipairs(furniture) do
       local obj = NetworkGetEntityFromNetworkId(item.netid)
       if DoesEntityExist(obj) then
         table.insert(State.spawnedProps, obj)
+
         if item.type == 'chair' then
           local finalCoords = GetEntityCoords(obj)
-          local newId = #State.validSeats + 1
           table.insert(State.validSeats, {
             entity = obj,
             coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
             isOccupied = false,
-            id = newId
+            id = #State.validSeats + 1
           })
         end
       end
     end
 
+    -- Clean up world props now that we know what's ours
+    DeleteWorldProps()
+
     SetupKitchen()
     State.isRestaurantOpen = true
     lib.print.info(('Restaurant already open! Seats: %d'):format(#State.validSeats))
-
-    -- Start customer spawning
-    CreateThread(function()
-      Wait(2000)
-      if State.isRestaurantOpen then SpawnSingleCustomer() end
-
-      while State.isRestaurantOpen do
-        Wait(config.SpawnInterval)
-        if State.isRestaurantOpen then SpawnSingleCustomer() end
-      end
-    end)
-
     return
   end
 
+  -- Fresh setup
   CleanupScene()
 
-  -- Call server to spawn furniture
   lib.print.info('Requesting server to spawn furniture')
   local success = lib.callback.await('waiter:server:setupRestaurant', false)
 
@@ -132,7 +135,7 @@ function SetupRestaurant()
     return
   end
 
-  -- Wait for GlobalState to be populated
+  -- Wait for GlobalState to be populated by server
   local furniture = lib.waitFor(function()
     if GlobalState.waiterFurniture then return GlobalState.waiterFurniture end
   end, 'Furniture not spawned by server', 5000)
@@ -142,11 +145,8 @@ function SetupRestaurant()
     return
   end
 
-  DeleteWorldProps()
-
-  -- Get furniture entities from server
+  -- Get furniture entities and populate our tracking
   lib.print.info(('Processing %d furniture pieces'):format(#furniture))
-
   for _, item in ipairs(furniture) do
     local obj = NetworkGetEntityFromNetworkId(item.netid)
 
@@ -155,16 +155,18 @@ function SetupRestaurant()
 
       if item.type == 'chair' then
         local finalCoords = GetEntityCoords(obj)
-        local newId = #State.validSeats + 1
         table.insert(State.validSeats, {
           entity = obj,
           coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
           isOccupied = false,
-          id = newId
+          id = #State.validSeats + 1
         })
       end
     end
   end
+
+  -- Clean up world props now that we know what's ours
+  DeleteWorldProps()
 
   SetupKitchen()
   State.isRestaurantOpen = true
@@ -174,18 +176,16 @@ function SetupRestaurant()
   CreateThread(function()
     while State.isRestaurantOpen do
       DeleteWorldProps()
-      Wait(5000)
+      Wait(2000)
     end
   end)
 
   -- Thread: Spawn customers
   CreateThread(function()
     Wait(2000)
-    if State.isRestaurantOpen then SpawnSingleCustomer() end
-
     while State.isRestaurantOpen do
-      Wait(config.SpawnInterval)
       if State.isRestaurantOpen then SpawnSingleCustomer() end
+      Wait(config.SpawnInterval)
     end
   end)
 end

@@ -118,35 +118,20 @@ end
 
 function DeliverFood(customer)
   local ped = customer.ped
-  local itemsDelivered = 0
+  local tray = GetMyTray()
 
-  -- Loop backwards
-  local i = #State.handContent
-  while i > 0 do
-    local heldItem = State.handContent[i]
-    local matchIndex = nil
+  -- Match tray items with customer order
+  local matchedItems, itemsDelivered = MatchTrayWithOrder(tray, customer.order)
 
-    -- Check if customer needs this specific item
-    for orderIdx, neededItem in ipairs(customer.order) do
-      if neededItem == heldItem then
-        matchIndex = orderIdx
-        break
-      end
+  -- Tell server to remove delivered items
+  if itemsDelivered > 0 then
+    for _, item in ipairs(matchedItems) do
+      TriggerServerEvent('waiter:server:modifyTray', 'remove', item)
     end
-
-    if matchIndex then
-      table.remove(customer.order, matchIndex)
-      table.remove(State.handContent, i)
-      itemsDelivered = itemsDelivered + 1
-    end
-
-    i = i - 1
   end
 
   -- Process Results
   if itemsDelivered > 0 then
-    UpdateHandVisuals()
-
     if #customer.order == 0 then
       -- Order Complete
       customer.status = "eating"

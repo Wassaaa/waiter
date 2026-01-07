@@ -17,11 +17,12 @@ files {
 }
 
 server_scripts {
-  'server/main.lua',
+  'server/*.lua',
 }
 
 client_scripts {
   'client/state.lua',
+  'client/tray_statebag.lua',
   'client/tray.lua',
   'client/customers.lua',
   'client/furniture.lua',

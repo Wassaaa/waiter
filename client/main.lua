@@ -16,7 +16,6 @@ RegisterCommand('setuprest', function()
   else
     SetupRestaurant()
   end
-  SpawnSingleCustomer()
 end, false)
 
 RegisterCommand('closerest', function()

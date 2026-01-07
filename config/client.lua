@@ -2,6 +2,7 @@ return {
   -- Locations
   EntranceCoords      = vector4(-1266.05, -891.02, 10.48, 26.34),
   KitchenCoords       = vector4(-1273.61, -885.89, 10.93, 310.93),
+  CleanupRadius       = 20.0,
 
   -- Furniture Layout
   Furniture           = {
