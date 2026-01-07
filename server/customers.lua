@@ -23,6 +23,26 @@ end
 
 ---Spawn a single customer
 local function SpawnCustomer()
+  -- Check if any players are nearby
+  local playersNearby = false
+  local restaurantCenter = vector3(clientConfig.EntranceCoords.x, clientConfig.EntranceCoords.y, clientConfig.EntranceCoords.z)
+  
+  for _, playerId in ipairs(GetPlayers()) do
+    local playerPed = GetPlayerPed(playerId)
+    if DoesEntityExist(playerPed) then
+      local playerCoords = GetEntityCoords(playerPed)
+      local dist = #(playerCoords - restaurantCenter)
+      if dist <= clientConfig.ProximityRadius then
+        playersNearby = true
+        break
+      end
+    end
+  end
+  
+  if not playersNearby then
+    return -- Don't spawn customers if no players nearby
+  end
+
   -- Find available seat
   local availableSeats = {}
   if not GlobalState.waiterFurniture then return end

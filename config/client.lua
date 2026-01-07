@@ -4,6 +4,7 @@ return {
   ExitCoords          = vector4(-1258.44, -882.29, 10.91, 301.73),
   KitchenCoords       = vector4(-1273.61, -885.89, 10.93, 310.93),
   CleanupRadius       = 20.0,
+  ProximityRadius     = 20.0, -- Distance to check for nearby players before spawning customers
 
   -- Furniture Layout
   Furniture           = {

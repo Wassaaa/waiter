@@ -15,9 +15,12 @@ local function handleCustomerStatus(ped, customerData)
   local seatCoords = customerData.seatCoords
 
   -- Apply furniture ghosting
-  for _, prop in pairs(State.spawnedProps) do
-    if DoesEntityExist(prop) then
-      SetEntityNoCollisionEntity(prop, ped, false)
+  if GlobalState.waiterFurniture then
+    for _, item in ipairs(GlobalState.waiterFurniture) do
+      local prop = NetworkGetEntityFromNetworkId(item.netid)
+      if DoesEntityExist(prop) then
+        SetEntityNoCollisionEntity(prop, ped, false)
+      end
     end
   end
 

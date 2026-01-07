@@ -68,13 +68,23 @@ function DeleteWorldProps()
     end
 
     if isTargetHash and dist <= config.CleanupRadius then
-      -- Check if this is one of OUR spawned entities
+      -- Check if this is one of OUR spawned entities by network ID
+      local objNetId = NetworkGetNetworkIdFromEntity(obj)
       local isOurFurniture = false
-      for _, spawnedProp in ipairs(State.spawnedProps) do
-        if obj == spawnedProp then
-          isOurFurniture = true
-          break
+
+      -- Check against furniture in GlobalState
+      if GlobalState.waiterFurniture then
+        for _, item in ipairs(GlobalState.waiterFurniture) do
+          if item.netid == objNetId then
+            isOurFurniture = true
+            break
+          end
         end
+      end
+
+      -- Check against grill
+      if GlobalState.waiterGrill and GlobalState.waiterGrill == objNetId then
+        isOurFurniture = true
       end
 
       if not isOurFurniture then
@@ -101,12 +111,10 @@ function SetupRestaurant()
     for _, item in ipairs(furniture) do
       local obj = NetworkGetEntityFromNetworkId(item.netid)
       if DoesEntityExist(obj) then
-        table.insert(State.spawnedProps, obj)
-
         if item.type == 'chair' then
           local finalCoords = GetEntityCoords(obj)
           table.insert(State.validSeats, {
-            entity = obj,
+            netid = item.netid,
             coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
             isOccupied = false,
             id = #State.validSeats + 1
@@ -151,12 +159,10 @@ function SetupRestaurant()
     local obj = NetworkGetEntityFromNetworkId(item.netid)
 
     if DoesEntityExist(obj) then
-      table.insert(State.spawnedProps, obj)
-
       if item.type == 'chair' then
         local finalCoords = GetEntityCoords(obj)
         table.insert(State.validSeats, {
-          entity = obj,
+          netid = item.netid,
           coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
           isOccupied = false,
           id = #State.validSeats + 1

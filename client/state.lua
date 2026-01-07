@@ -1,6 +1,5 @@
 -- Shared state management
 State = {
-  spawnedProps = {},
   validSeats = {},
   customers = {},
   allPeds = {},
@@ -39,7 +38,6 @@ function CleanupScene()
   end
 
   -- Reset Logic
-  State.spawnedProps = {}
   State.validSeats = {}
   State.customers = {}
   State.allPeds = {}
