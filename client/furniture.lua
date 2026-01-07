@@ -3,6 +3,18 @@ local config = require 'config.client'
 local sharedConfig = require 'config.shared'
 
 function SetupKitchen()
+  -- Wait for server to spawn grill
+  if not GlobalState.waiterGrill then
+    lib.print.error('Grill not spawned by server')
+    return
+  end
+
+  local grill = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
+  if not DoesEntityExist(grill) then
+    lib.print.error('Grill entity does not exist')
+    return
+  end
+
   local options = {}
 
   -- Generate Add Options
@@ -25,15 +37,6 @@ function SetupKitchen()
     onSelect = function() ModifyHand('clear') end
   })
 
-  -- Spawn Grill
-  local cooker = config.KitchenGrill
-  lib.requestModel(cooker.hash)
-  local grill = CreateObject(cooker.hash, cooker.coords.x, cooker.coords.y, cooker.coords.z, false, false, false)
-  PlaceObjectOnGroundProperly(grill)
-  SetEntityHeading(grill, cooker.coords.w)
-  FreezeEntityPosition(grill, true)
-  table.insert(State.spawnedProps, grill)
-
   exports.ox_target:addLocalEntity(grill, options)
   State.kitchenGrill = grill
 end
@@ -44,64 +47,122 @@ function DeleteWorldProps()
     joaat('prop_table_01')
   }
 
-  for _, item in ipairs(config.Furniture) do
-    local existingProp = GetClosestObjectOfType(item.coords.x, item.coords.y, item.coords.z, 0.5, item.hash, false, false,
+  -- Only delete world props that are NOT at our furniture coordinates
+  local radiusCheck = 100.0 -- Check in a radius around restaurant
+  local centerCoord = config.EntranceCoords
+
+  for _, hash in ipairs(propsToDelete) do
+    local obj = GetClosestObjectOfType(centerCoord.x, centerCoord.y, centerCoord.z, radiusCheck, hash, false, false,
       false)
 
-    while DoesEntityExist(existingProp) do
-      local propModel = GetEntityModel(existingProp)
-      local isTargetModel = false
+    while DoesEntityExist(obj) do
+      local objCoords = GetEntityCoords(obj)
+      local isOurFurniture = false
 
-      for _, modelHash in ipairs(propsToDelete) do
-        if propModel == modelHash then
-          isTargetModel = true
+      -- Check if this object is at one of our furniture spawn points
+      for _, item in ipairs(config.Furniture) do
+        if #(objCoords - vector3(item.coords.x, item.coords.y, item.coords.z)) < 0.5 then
+          isOurFurniture = true
           break
         end
       end
 
-      local isOurProp = false
-      for _, ourProp in pairs(State.spawnedProps) do
-        if existingProp == ourProp then
-          isOurProp = true
-          break
-        end
+      if not isOurFurniture then
+        SetEntityAsMissionEntity(obj, true, true)
+        DeleteObject(obj)
       end
 
-      if isTargetModel and not isOurProp then
-        SetEntityAsMissionEntity(existingProp, true, true)
-        DeleteObject(existingProp)
-      else
-        break
-      end
-
-      existingProp = GetClosestObjectOfType(item.coords.x, item.coords.y, item.coords.z, 0.5, item.hash, false, false,
-        false)
+      -- Find next closest (skip the one we just processed)
+      obj = GetClosestObjectOfType(centerCoord.x, centerCoord.y, centerCoord.z, radiusCheck, hash, false, false, false)
+      if isOurFurniture then break end -- Don't keep looping if we found our furniture
     end
   end
 end
 
 function SetupRestaurant()
+  -- Check if restaurant is already set up by another player
+  if GlobalState.waiterFurniture then
+    lib.notify({ type = 'info', description = 'Restaurant is already set up' })
+
+    -- Just get the existing furniture from GlobalState
+    local furniture = GlobalState.waiterFurniture
+    for _, item in ipairs(furniture) do
+      local obj = NetworkGetEntityFromNetworkId(item.netid)
+      if DoesEntityExist(obj) then
+        table.insert(State.spawnedProps, obj)
+        if item.type == 'chair' then
+          local finalCoords = GetEntityCoords(obj)
+          local newId = #State.validSeats + 1
+          table.insert(State.validSeats, {
+            entity = obj,
+            coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
+            isOccupied = false,
+            id = newId
+          })
+        end
+      end
+    end
+
+    SetupKitchen()
+    State.isRestaurantOpen = true
+    lib.print.info(('Restaurant already open! Seats: %d'):format(#State.validSeats))
+
+    -- Start customer spawning
+    CreateThread(function()
+      Wait(2000)
+      if State.isRestaurantOpen then SpawnSingleCustomer() end
+
+      while State.isRestaurantOpen do
+        Wait(config.SpawnInterval)
+        if State.isRestaurantOpen then SpawnSingleCustomer() end
+      end
+    end)
+
+    return
+  end
+
   CleanupScene()
+
+  -- Call server to spawn furniture
+  lib.print.info('Requesting server to spawn furniture')
+  local success = lib.callback.await('waiter:server:setupRestaurant', false)
+
+  if not success then
+    lib.notify({ type = 'error', description = 'Failed to setup restaurant' })
+    return
+  end
+
+  -- Wait for GlobalState to be populated
+  local furniture = lib.waitFor(function()
+    if GlobalState.waiterFurniture then return GlobalState.waiterFurniture end
+  end, 'Furniture not spawned by server', 5000)
+
+  if not furniture then
+    lib.print.error('Furniture GlobalState not set')
+    return
+  end
+
   DeleteWorldProps()
 
-  -- Spawn Furniture
-  for i, item in ipairs(config.Furniture) do
-    lib.requestModel(item.hash)
-    local obj = CreateObject(item.hash, item.coords.x, item.coords.y, item.coords.z, false, false, false)
-    PlaceObjectOnGroundProperly(obj)
-    SetEntityHeading(obj, item.coords.w)
-    FreezeEntityPosition(obj, true)
-    table.insert(State.spawnedProps, obj)
+  -- Get furniture entities from server
+  lib.print.info(('Processing %d furniture pieces'):format(#furniture))
 
-    if item.type == 'chair' then
-      local finalCoords = GetEntityCoords(obj)
-      local newId = #State.validSeats + 1
-      table.insert(State.validSeats, {
-        entity = obj,
-        coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
-        isOccupied = false,
-        id = newId
-      })
+  for _, item in ipairs(furniture) do
+    local obj = NetworkGetEntityFromNetworkId(item.netid)
+
+    if DoesEntityExist(obj) then
+      table.insert(State.spawnedProps, obj)
+
+      if item.type == 'chair' then
+        local finalCoords = GetEntityCoords(obj)
+        local newId = #State.validSeats + 1
+        table.insert(State.validSeats, {
+          entity = obj,
+          coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
+          isOccupied = false,
+          id = newId
+        })
+      end
     end
   end
 

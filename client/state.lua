@@ -29,15 +29,17 @@ function PlayAnimUpper(ped, dict, anim, loop)
 end
 
 function CleanupScene()
-  -- Delete Furniture
-  for _, prop in pairs(State.spawnedProps) do SafeDelete(prop) end
-
-  -- Delete All Peds
+  -- Delete All Peds (client-side)
   for _, ped in pairs(State.allPeds) do SafeDelete(ped) end
 
-  -- Delete Hand/Tray Props
+  -- Delete Hand/Tray Props (client-side)
   for _, prop in pairs(State.handProps) do SafeDelete(prop) end
   SafeDelete(State.trayProp)
+
+  -- Request server to cleanup furniture
+  if State.isRestaurantOpen then
+    TriggerServerEvent('waiter:server:cleanup')
+  end
 
   -- Reset Logic
   State.spawnedProps = {}

@@ -62,3 +62,107 @@ end)
 lib.callback.register('waiter:canWork', function(source)
   return canPlayerWork(source)
 end)
+
+-- Furniture Spawning
+---@param source number Player who triggered setup
+lib.callback.register('waiter:server:setupRestaurant', function(source)
+  local clientConfig = require 'config.client'
+  local furniture = {}
+
+  lib.print.info('Spawning Furniture Server-Side')
+
+  -- Spawn all furniture pieces
+  for _, item in ipairs(clientConfig.Furniture) do
+    local obj = CreateObject(item.hash, item.coords.x, item.coords.y, item.coords.z, true, true, false)
+
+    lib.waitFor(function()
+      if DoesEntityExist(obj) then return true end
+    end, 'Failed to spawn furniture', 5000)
+
+    if DoesEntityExist(obj) then
+      SetEntityHeading(obj, item.coords.w)
+      FreezeEntityPosition(obj, true)
+
+      local netid = NetworkGetNetworkIdFromEntity(obj)
+      table.insert(furniture, {
+        netid = netid,
+        type = item.type,
+        coords = item.coords
+      })
+    end
+  end
+
+  -- Spawn kitchen grill
+  local cooker = clientConfig.KitchenGrill
+  local grill = CreateObject(cooker.hash, cooker.coords.x, cooker.coords.y, cooker.coords.z, true, true, false)
+
+  lib.waitFor(function()
+    if DoesEntityExist(grill) then return true end
+  end, 'Failed to spawn grill', 5000)
+
+  if DoesEntityExist(grill) then
+    SetEntityHeading(grill, cooker.coords.w)
+    FreezeEntityPosition(grill, true)
+
+    local grillNetId = NetworkGetNetworkIdFromEntity(grill)
+
+    -- Store in GlobalState for all clients
+    GlobalState.waiterFurniture = furniture
+    GlobalState.waiterGrill = grillNetId
+
+    lib.print.info(('Spawned %d furniture pieces and grill'):format(#furniture))
+    return true
+  end
+
+  return false
+end)
+
+-- Cleanup Restaurant
+RegisterNetEvent('waiter:server:cleanup', function()
+  lib.print.info('Cleaning up restaurant server-side')
+
+  -- Delete furniture
+  if GlobalState.waiterFurniture then
+    for _, item in ipairs(GlobalState.waiterFurniture) do
+      local entity = NetworkGetEntityFromNetworkId(item.netid)
+      if DoesEntityExist(entity) then
+        DeleteEntity(entity)
+      end
+    end
+  end
+
+  -- Delete grill
+  if GlobalState.waiterGrill then
+    local grill = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
+    if DoesEntityExist(grill) then
+      DeleteEntity(grill)
+    end
+  end
+
+  GlobalState.waiterFurniture = nil
+  GlobalState.waiterGrill = nil
+end)
+
+-- Cleanup on resource stop
+AddEventHandler('onResourceStop', function(resourceName)
+  if GetCurrentResourceName() ~= resourceName then return end
+
+  if GlobalState.waiterFurniture then
+    for _, item in ipairs(GlobalState.waiterFurniture) do
+      local entity = NetworkGetEntityFromNetworkId(item.netid)
+      if DoesEntityExist(entity) then
+        DeleteEntity(entity)
+      end
+    end
+  end
+
+  if GlobalState.waiterGrill then
+    local grill = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
+    if DoesEntityExist(grill) then
+      DeleteEntity(grill)
+    end
+  end
+
+  GlobalState.waiterFurniture = nil
+  GlobalState.waiterGrill = nil
+end)

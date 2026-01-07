@@ -6,25 +6,25 @@ return {
   -- Furniture Layout
   Furniture           = {
     -- 1
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1267.09, -881.66, 11.329, 121.61) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1267.09, -881.66, 10.94, 121.61) },
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1268.32, -882.15, 10.94, 115.4) },
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1267.62, -880.47, 10.94, 23.39) },
     -- 2
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1265.67, -880.34, 11.329, 34.29) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1265.67, -880.34, 10.94, 34.29) },
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1266.21, -879.23, 10.94, 28.24) },
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1264.71, -879.67, 10.94, 296.07) },
     -- 3
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1276.19, -883.99, 10.94, 29.11) },
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1275.65, -884.78, 11.32, 35.15) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1275.65, -884.78, 10.94, 35.15) },
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1274.89, -884.21, 10.93, 297.05) },
     -- 4
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1277.42, -882.41, 11.33, 308.58) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1277.42, -882.41, 10.94, 308.58) },
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1276.66, -881.84, 10.94, 302.23) },
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1276.78, -883.16, 10.94, 213.99) },
     -- 5
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1277.84, -880.27, 10.94, 300.19) },
     { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1279.11, -880.09, 10.93, 29.67) },
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1278.56, -880.88, 11.32, 36.02) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1278.56, -880.88, 10.94, 36.02) },
   },
 
   KitchenGrill        = { type = 'kitchen', hash = joaat('prop_bbq_5'), coords = vector4(-1273.61, -885.89, 10.93, 310.93) },
