@@ -2,7 +2,6 @@
 State = {
   validSeats = {},
   customers = {},
-  kitchenGrill = nil,
   isRestaurantOpen = false
 }
 
@@ -34,9 +33,13 @@ function CleanupScene()
     TriggerServerEvent('waiter:server:cleanupCustomers')
   end
 
+  -- Remove ox_target options from grill model
+  if RemoveKitchenTarget then
+    RemoveKitchenTarget()
+  end
+
   -- Reset Logic
   State.validSeats = {}
   State.customers = {}
   State.isRestaurantOpen = false
-  State.kitchenGrill = nil
 end

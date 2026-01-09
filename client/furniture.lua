@@ -2,50 +2,80 @@
 local clientConfig = require 'config.client'
 local sharedConfig = require 'config.shared'
 
-function SetupKitchen()
-  -- Wait for server to spawn grill
-  if not GlobalState.waiterGrill then
-    lib.print.error('Grill not spawned by server')
-    return
-  end
+local isInProximity = false
+local cleanupThreadActive = false
+local grillTargetRegistered = false
 
-  -- Wait for entity to stream in (with timeout)
-  local grill = lib.waitFor(function()
-    local entity = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
-    if DoesEntityExist(entity) then
-      return entity
-    end
-  end, 'Grill entity failed to stream in', 10000)
+-- Get entrance coords as vec3
+local function GetEntranceVec3()
+  return vector3(sharedConfig.EntranceCoords.x, sharedConfig.EntranceCoords.y, sharedConfig.EntranceCoords.z)
+end
 
-  if not grill then
-    lib.print.error('Grill entity does not exist after timeout')
-    return
-  end
+-- Check if player is within restaurant proximity
+local function IsPlayerInRange()
+  local playerCoords = GetEntityCoords(cache.ped)
+  local entrance = GetEntranceVec3()
+  return #(playerCoords - entrance) <= sharedConfig.ProximityRadius
+end
 
+-- Setup kitchen grill ox_target using model-based targeting
+-- This works regardless of entity streaming - ox_target handles it internally
+function SetupKitchenTarget()
+  if grillTargetRegistered then return end
+
+  local grillHash = sharedConfig.KitchenGrill.hash
   local options = {}
 
   -- Generate Add Options
   for k, v in pairs(sharedConfig.Items) do
     table.insert(options, {
-      name = 'add_' .. k,
+      name = 'waiter_add_' .. k,
       icon = 'fa-solid fa-plus',
       label = 'Pick up ' .. v.label,
       distance = 2.0,
+      canInteract = function(entity)
+        -- Only show if restaurant is open and entity is our grill
+        if not GlobalState.waiterGrill then return false end
+        local grillEntity = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
+        return entity == grillEntity
+      end,
       onSelect = function() ModifyHand('add', k) end
     })
   end
 
   -- Clear Tray Option
   table.insert(options, {
-    name = 'clear_tray',
+    name = 'waiter_clear_tray',
     icon = 'fa-solid fa-trash',
     label = 'Clear Tray',
     distance = 2.0,
+    canInteract = function(entity)
+      if not GlobalState.waiterGrill then return false end
+      local grillEntity = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
+      return entity == grillEntity
+    end,
     onSelect = function() ModifyHand('clear') end
   })
 
-  exports.ox_target:addLocalEntity(grill, options)
-  State.kitchenGrill = grill
+  exports.ox_target:addModel(grillHash, options)
+  grillTargetRegistered = true
+  lib.print.info('Grill target options registered (model-based)')
+end
+
+-- Remove kitchen target (for cleanup)
+function RemoveKitchenTarget()
+  if not grillTargetRegistered then return end
+
+  local grillHash = sharedConfig.KitchenGrill.hash
+
+  -- Remove all our options by name
+  for k, _ in pairs(sharedConfig.Items) do
+    exports.ox_target:removeModel(grillHash, 'waiter_add_' .. k)
+  end
+  exports.ox_target:removeModel(grillHash, 'waiter_clear_tray')
+
+  grillTargetRegistered = false
+  lib.print.info('Grill target options removed')
 end
 
 function DeleteWorldProps()
@@ -70,17 +100,21 @@ function DeleteWorldProps()
       end
     end
 
-    if isTargetHash and dist <= clientConfig.CleanupRadius then
+    if isTargetHash and dist <= sharedConfig.ProximityRadius then
       -- Check if this is one of OUR spawned entities by network ID
-      local objNetId = NetworkGetNetworkIdFromEntity(obj)
       local isOurFurniture = false
 
-      -- Check against furniture in GlobalState
-      if GlobalState.waiterFurniture then
-        for _, item in ipairs(GlobalState.waiterFurniture) do
-          if item.netid == objNetId then
-            isOurFurniture = true
-            break
+      -- Only check network ID if entity is networked (world props aren't)
+      if NetworkGetEntityIsNetworked(obj) then
+        local objNetId = NetworkGetNetworkIdFromEntity(obj)
+
+        -- Check against furniture in GlobalState
+        if GlobalState.waiterFurniture then
+          for _, item in ipairs(GlobalState.waiterFurniture) do
+            if item.netid == objNetId then
+              isOurFurniture = true
+              break
+            end
           end
         end
       end
@@ -102,7 +136,7 @@ end
 function SetupRestaurant()
   local alreadySetup = GlobalState.waiterFurniture ~= nil
 
-  -- If not already setup, request server to spawn
+  -- Request server to spawn if not already setup
   if not alreadySetup then
     CleanupScene()
     lib.print.info('Requesting server to spawn furniture')
@@ -116,7 +150,24 @@ function SetupRestaurant()
     -- Start customer spawning (only needed once)
     lib.callback.await('waiter:server:startCustomerSpawning', false)
   else
-    lib.notify({ type = 'info', description = 'Restaurant is already set up' })
+    lib.print.info('Restaurant already running, loading furniture data')
+  end
+
+  -- Load furniture data
+  LoadFurnitureData()
+
+  -- Register ox_target for grill (model-based, works regardless of streaming)
+  SetupKitchenTarget()
+
+  -- Start proximity management thread
+  StartProximityManagement()
+end
+
+-- Load furniture entities and populate seat tracking (called from various places)
+function LoadFurnitureData()
+  if State.isRestaurantOpen then
+    lib.print.info('Furniture already loaded')
+    return
   end
 
   -- Wait for GlobalState to be populated
@@ -154,15 +205,81 @@ function SetupRestaurant()
   -- Clean up world props now that we know what's ours
   DeleteWorldProps()
 
-  SetupKitchen()
   State.isRestaurantOpen = true
-  lib.print.info(('Restaurant %s! Seats: %d'):format(alreadySetup and 'joined' or 'opened', #State.validSeats))
+  lib.print.info(('Furniture loaded! Seats: %d'):format(#State.validSeats))
+end
 
-  -- Thread: Keep world props deleted
+-- Proximity management thread - handles cleanup and exit detection
+function StartProximityManagement()
+  if cleanupThreadActive then return end
+  cleanupThreadActive = true
+
   CreateThread(function()
+    lib.print.info('Proximity management thread started')
+
     while State.isRestaurantOpen do
-      DeleteWorldProps()
-      Wait(2000)
+      local wasInProximity = isInProximity
+      isInProximity = IsPlayerInRange()
+
+      -- Player entered proximity
+      if isInProximity and not wasInProximity then
+        lib.print.info('Player entered restaurant area')
+        DeleteWorldProps() -- Initial cleanup on entry
+      end
+
+      -- Player left proximity
+      if not isInProximity and wasInProximity then
+        lib.print.info('Player left restaurant area')
+        ModifyHand('clear')
+        lib.notify({ type = 'info', description = 'Tray cleared (Left Area)' })
+      end
+
+      -- Periodic cleanup while in proximity (world props can respawn)
+      if isInProximity then
+        DeleteWorldProps()
+      end
+
+      Wait(2000) -- Check every 2 seconds
     end
+
+    cleanupThreadActive = false
+    lib.print.info('Proximity management thread stopped')
   end)
 end
+
+-- Watch for GlobalState changes to handle late-joining players or remote setup
+AddStateBagChangeHandler('waiterGrill', 'global', function(_, _, value)
+  if value then
+    lib.print.info('GlobalState.waiterGrill changed, setting up target options')
+    SetupKitchenTarget()
+  else
+    lib.print.info('GlobalState.waiterGrill cleared, removing target options')
+    RemoveKitchenTarget()
+  end
+end)
+
+-- Watch for furniture changes (for late-joining players)
+AddStateBagChangeHandler('waiterFurniture', 'global', function(_, _, value)
+  if value and not State.isRestaurantOpen then
+    lib.print.info('GlobalState.waiterFurniture detected, auto-loading')
+    -- Small delay to ensure grill state is also set
+    SetTimeout(500, function()
+      LoadFurnitureData()
+      SetupKitchenTarget()
+      StartProximityManagement()
+    end)
+  end
+end)
+
+-- Initialize on resource start
+CreateThread(function()
+  Wait(1000) -- Let ox_lib and other resources initialize
+
+  -- Check if restaurant is already running (e.g., player joined mid-session or resource restart)
+  if GlobalState.waiterFurniture then
+    lib.print.info('Restaurant already running on resource start, auto-loading')
+    LoadFurnitureData()
+    SetupKitchenTarget()
+    StartProximityManagement()
+  end
+end)

@@ -2,7 +2,7 @@
 return {
   -- Locations
   EntranceCoords      = vector4(-1266.05, -891.02, 10.48, 26.34),
-  ProximityRadius     = 20.0, -- Distance to check for nearby players before spawning customers
+  ProximityRadius     = 30.0, -- Distance for customer spawning, furniture loading, and prop cleanup
 
   -- World Props to Delete (models that exist in the world at this location)
   PropsToDelete       = {
