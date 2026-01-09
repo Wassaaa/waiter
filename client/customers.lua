@@ -190,6 +190,13 @@ AddStateBagChangeHandler('waiterCustomer', nil, function(bagName, _, value, _, r
   if not trackedCustomers[netid] then
     trackedCustomers[netid] = { ped = ped, nextWaveTime = nil }
 
+    -- Setup Ped Flags
+    SetBlockingOfNonTemporaryEvents(ped, true)
+    SetPedConfigFlag(ped, 185, true) -- CPED_CONFIG_FLAG_PreventAllMeleeTaunts
+    SetPedConfigFlag(ped, 422, true) -- CPED_CONFIG_FLAG_IgnoreBeingOnFire
+    SetPedCanPlayAmbientAnims(ped, false)
+    SetPedCanPlayAmbientBaseAnims(ped, false)
+
     -- Setup ox_target interactions
     exports.ox_target:addLocalEntity(ped, {
       {
