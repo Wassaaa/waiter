@@ -85,6 +85,17 @@ local function updatePlayerTray(playerId, trayItems)
     tray = trayProp,
     items = itemProps
   }
+
+  -- Monitor this specific tray for player existence
+  CreateThread(function()
+    while playerTrays[playerId] and playerTrays[playerId].tray == trayProp do
+      if not DoesEntityExist(ped) then
+        cleanupPlayerTray(playerId)
+        break
+      end
+      Wait(60000)
+    end
+  end)
 end
 
 -- Watch for tray changes on ALL players
@@ -97,12 +108,6 @@ AddStateBagChangeHandler('waiterTray', "", function(bagName, _, value, _, replic
 
   -- Update visuals
   updatePlayerTray(playerId, value)
-end)
-
--- Cleanup when players leave
-AddEventHandler('playerDropped', function()
-  local playerId = source
-  cleanupPlayerTray(playerId)
 end)
 
 -- Cleanup on resource stop
