@@ -2,7 +2,6 @@
 State = {
   validSeats = {},
   customers = {},
-  allPeds = {},
   kitchenGrill = nil,
   isRestaurantOpen = false
 }
@@ -25,13 +24,11 @@ function PlayAnimUpper(ped, dict, anim, loop)
 end
 
 function CleanupScene()
-  -- Delete All Peds (client-side)
-  for _, ped in pairs(State.allPeds) do SafeDelete(ped) end
-
   -- Clear player's tray via server
   TriggerServerEvent('waiter:server:modifyTray', 'clear')
 
   -- Request server to cleanup furniture and customers
+  -- Server handles ped deletion, which auto-replicates to clients
   if State.isRestaurantOpen then
     TriggerServerEvent('waiter:server:cleanup')
     TriggerServerEvent('waiter:server:cleanupCustomers')
@@ -40,7 +37,6 @@ function CleanupScene()
   -- Reset Logic
   State.validSeats = {}
   State.customers = {}
-  State.allPeds = {}
   State.isRestaurantOpen = false
   State.kitchenGrill = nil
 end

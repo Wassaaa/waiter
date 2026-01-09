@@ -1,5 +1,4 @@
 -- Customer Management - Server Side
-local clientConfig = require 'config.client'
 local sharedConfig = require 'config.shared'
 
 -- Track active customers
@@ -25,20 +24,21 @@ end
 local function SpawnCustomer()
   -- Check if any players are nearby
   local playersNearby = false
-  local restaurantCenter = vector3(clientConfig.EntranceCoords.x, clientConfig.EntranceCoords.y, clientConfig.EntranceCoords.z)
-  
+  local restaurantCenter = vector3(sharedConfig.EntranceCoords.x, sharedConfig.EntranceCoords.y,
+    sharedConfig.EntranceCoords.z)
+
   for _, playerId in ipairs(GetPlayers()) do
     local playerPed = GetPlayerPed(playerId)
     if DoesEntityExist(playerPed) then
       local playerCoords = GetEntityCoords(playerPed)
       local dist = #(playerCoords - restaurantCenter)
-      if dist <= clientConfig.ProximityRadius then
+      if dist <= sharedConfig.ProximityRadius then
         playersNearby = true
         break
       end
     end
   end
-  
+
   if not playersNearby then
     return -- Don't spawn customers if no players nearby
   end
@@ -68,8 +68,8 @@ local function SpawnCustomer()
   end
 
   local seat = availableSeats[math.random(1, #availableSeats)]
-  local model = clientConfig.Models[math.random(1, #clientConfig.Models)]
-  local entrance = clientConfig.EntranceCoords
+  local model = sharedConfig.Models[math.random(1, #sharedConfig.Models)]
+  local entrance = sharedConfig.EntranceCoords
 
   -- Spawn ped on server
   local ped = CreatePed(4, joaat(model), entrance.x, entrance.y, entrance.z, entrance.w, true, true)
@@ -111,25 +111,25 @@ local function SpawnCustomer()
       local customer = customers[customerId]
 
       if customer.status == 'waiting_order' then
-        if (GetGameTimer() - customer.patienceTimer) > clientConfig.PatienceOrder then
+        if (GetGameTimer() - customer.patienceTimer) > sharedConfig.PatienceOrder then
           customer.status = 'leaving_angry'
           customer.leavingTimer = GetGameTimer() -- Track when they started leaving
           Entity(ped).state:set('waiterCustomer', customer, true)
         end
       elseif customer.status == 'waiting_food' then
-        if (GetGameTimer() - customer.patienceTimer) > clientConfig.PatienceFood then
+        if (GetGameTimer() - customer.patienceTimer) > sharedConfig.PatienceFood then
           customer.status = 'leaving_angry'
           customer.leavingTimer = GetGameTimer()
           Entity(ped).state:set('waiterCustomer', customer, true)
         end
       elseif customer.status == 'eating' then
-        Wait(clientConfig.EatTime)
+        Wait(sharedConfig.EatTime)
         customer.status = 'leaving_happy'
         customer.leavingTimer = GetGameTimer()
         Entity(ped).state:set('waiterCustomer', customer, true)
       elseif customer.status == 'leaving_angry' or customer.status == 'leaving_happy' then
         -- Check if leaving timeout exceeded
-        if customer.leavingTimer and (GetGameTimer() - customer.leavingTimer) > clientConfig.WalkoutTimeout then
+        if customer.leavingTimer and (GetGameTimer() - customer.leavingTimer) > sharedConfig.WalkoutTimeout then
           if DoesEntityExist(ped) then DeleteEntity(ped) end
           customers[customerId] = nil
           lib.print.info(('Customer %d cleanup: walkout timeout'):format(customerId))
@@ -156,7 +156,7 @@ RegisterNetEvent('waiter:server:customerArrived', function(customerId)
 
   -- Wait then change to waiting_order
   CreateThread(function()
-    Wait(clientConfig.SitDelay)
+    Wait(sharedConfig.SitDelay)
     if customers[customerId] and customers[customerId].status == 'sitting' then
       customer.status = 'waiting_order'
       customer.patienceTimer = GetGameTimer()
@@ -229,7 +229,7 @@ lib.callback.register('waiter:server:startCustomerSpawning', function(source)
     Wait(2000)
     while GlobalState.waiterFurniture do
       SpawnCustomer()
-      Wait(clientConfig.SpawnInterval)
+      Wait(sharedConfig.SpawnInterval)
     end
   end)
   return true

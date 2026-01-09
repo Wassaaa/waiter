@@ -1,5 +1,5 @@
 -- Tray Statebag Handler - Watches for tray changes on ALL players and renders props locally
-local config = require 'config.client'
+local clientConfig = require 'config.client'
 local sharedConfig = require 'config.shared'
 
 -- Store tray props for each player {[serverId] = {tray = entity, items = {entities}}}
@@ -45,7 +45,7 @@ local function updatePlayerTray(playerId, trayItems)
   if not DoesEntityExist(ped) then return end
 
   -- Play animation
-  PlayAnimUpper(ped, config.Anims.Tray.dict, config.Anims.Tray.anim, true)
+  PlayAnimUpper(ped, clientConfig.Anims.Tray.dict, clientConfig.Anims.Tray.anim, true)
 
   -- Spawn tray prop
   local trayHash = joaat("prop_food_tray_01")

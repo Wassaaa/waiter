@@ -1,5 +1,5 @@
 -- Furniture Spawning and Management
-local clientConfig = require 'config.client'
+local sharedConfig = require 'config.shared'
 
 -- Cleanup furniture and reset GlobalState
 local function CleanupFurniture()
@@ -38,7 +38,7 @@ lib.callback.register('waiter:server:setupRestaurant', function(source)
   lib.print.info('Spawning Furniture Server-Side')
 
   -- Spawn all furniture pieces
-  for _, item in ipairs(clientConfig.Furniture) do
+  for _, item in ipairs(sharedConfig.Furniture) do
     local obj = CreateObject(item.hash, item.coords.x, item.coords.y, item.coords.z, true, true, false)
 
     lib.waitFor(function()
@@ -59,7 +59,7 @@ lib.callback.register('waiter:server:setupRestaurant', function(source)
   end
 
   -- Spawn kitchen grill
-  local cooker = clientConfig.KitchenGrill
+  local cooker = sharedConfig.KitchenGrill
   local grill = CreateObject(cooker.hash, cooker.coords.x, cooker.coords.y, cooker.coords.z, true, true, false)
 
   lib.waitFor(function()

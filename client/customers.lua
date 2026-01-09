@@ -1,9 +1,9 @@
 -- Customer Management - Client Side (Statebag-driven)
-local config = require 'config.client'
+local clientConfig = require 'config.client'
 local sharedConfig = require 'config.shared'
 
--- Track customer peds and their wave threads
-local trackedCustomers = {} -- [netid] = { ped, waveThread }
+-- Track customer peds and their wave timing
+local trackedCustomers = {} -- [netid] = { ped, nextWaveTime }
 
 ---Handle customer status changes via statebag
 ---@param ped number The ped entity
@@ -38,7 +38,7 @@ local function handleCustomerStatus(ped, customerData)
           TriggerServerEvent('waiter:server:customerArrived', customerData.id)
           break
         end
-        if (GetGameTimer() - walkStart) > config.WalkTimeout then
+        if (GetGameTimer() - walkStart) > sharedConfig.WalkTimeout then
           -- Timeout, let server handle cleanup
           break
         end
@@ -52,44 +52,34 @@ local function handleCustomerStatus(ped, customerData)
     TaskStartScenarioAtPosition(ped, "PROP_HUMAN_SEAT_CHAIR", seatCoords.x, seatCoords.y, seatCoords.z + 0.50, seatH, -1,
       true, true)
   elseif status == 'waiting_order' then
-    -- Start waving thread (client-side random animation)
+    -- Initialize wave timing (handled by centralized thread)
     local netid = customerData.netid
-    if not trackedCustomers[netid].waveThread then
-      trackedCustomers[netid].waveThread = CreateThread(function()
-        while trackedCustomers[netid] and DoesEntityExist(ped) do
-          local currentData = Entity(ped).state.waiterCustomer
-          if currentData and currentData.status == 'waiting_order' then
-            Wait(math.random(config.WaveIntervalMin, config.WaveIntervalMax))
-            if DoesEntityExist(ped) and Entity(ped).state.waiterCustomer?.status == 'waiting_order' then
-              PlayAnimUpper(ped, config.Anims.Wave.dict, config.Anims.Wave.anim)
-            end
-          else
-            break
-          end
-        end
-      end)
+    if not trackedCustomers[netid].nextWaveTime then
+      trackedCustomers[netid].nextWaveTime = GetGameTimer() +
+          math.random(sharedConfig.WaveIntervalMin, sharedConfig.WaveIntervalMax)
     end
   elseif status == 'eating' then
     -- Play eating animation
-    PlayAnimUpper(ped, config.Anims.Eat.dict, config.Anims.Eat.anim, true)
+    PlayAnimUpper(ped, clientConfig.Anims.Eat.dict, clientConfig.Anims.Eat.anim, true)
   elseif status == 'leaving_angry' then
     -- Angry animation
     lib.notify({ type = 'warning', description = 'Customer left angry!' })
-    PlayAnimUpper(ped, config.Anims.Anger.dict, config.Anims.Anger.anim)
+    PlayAnimUpper(ped, clientConfig.Anims.Anger.dict, clientConfig.Anims.Anger.anim)
     Wait(1500)
     -- Walk to exit and fade out when close
     ClearPedTasksImmediately(ped)
-    TaskGoToCoordAnyMeans(ped, config.ExitCoords.x, config.ExitCoords.y, config.ExitCoords.z, 1.0, 0, false, 786603,
+    TaskGoToCoordAnyMeans(ped, clientConfig.ExitCoords.x, clientConfig.ExitCoords.y, clientConfig.ExitCoords.z, 1.0, 0,
+      false, 786603,
       0xbf800000)
 
     CreateThread(function()
       while DoesEntityExist(ped) do
-        local dist = #(GetEntityCoords(ped) - vector3(config.ExitCoords.x, config.ExitCoords.y, config.ExitCoords.z))
+        local dist = #(GetEntityCoords(ped) - vector3(clientConfig.ExitCoords.x, clientConfig.ExitCoords.y, clientConfig.ExitCoords.z))
         if dist <= 2.0 then
           -- Reached exit, fade out
           for i = 255, 0, -50 do
             SetEntityAlpha(ped, i, false)
-            Wait(config.FadeoutDuration / 6) -- Divide by 6 steps (255/50)
+            Wait(sharedConfig.FadeoutDuration / 6) -- Divide by 6 steps (255/50)
           end
           -- Notify server to delete
           TriggerServerEvent('waiter:server:customerExited', customerData.id)
@@ -101,17 +91,18 @@ local function handleCustomerStatus(ped, customerData)
   elseif status == 'leaving_happy' then
     -- Walk to exit and fade out when close
     ClearPedTasksImmediately(ped)
-    TaskGoToCoordAnyMeans(ped, config.ExitCoords.x, config.ExitCoords.y, config.ExitCoords.z, 1.0, 0, false, 786603,
+    TaskGoToCoordAnyMeans(ped, clientConfig.ExitCoords.x, clientConfig.ExitCoords.y, clientConfig.ExitCoords.z, 1.0, 0,
+      false, 786603,
       0xbf800000)
 
     CreateThread(function()
       while DoesEntityExist(ped) do
-        local dist = #(GetEntityCoords(ped) - vector3(config.ExitCoords.x, config.ExitCoords.y, config.ExitCoords.z))
+        local dist = #(GetEntityCoords(ped) - vector3(clientConfig.ExitCoords.x, clientConfig.ExitCoords.y, clientConfig.ExitCoords.z))
         if dist <= 2.0 then
           -- Reached exit, fade out
           for i = 255, 0, -50 do
             SetEntityAlpha(ped, i, false)
-            Wait(config.FadeoutDuration / 6)
+            Wait(sharedConfig.FadeoutDuration / 6)
           end
           -- Notify server to delete
           TriggerServerEvent('waiter:server:customerExited', customerData.id)
@@ -197,8 +188,7 @@ AddStateBagChangeHandler('waiterCustomer', nil, function(bagName, _, value, _, r
 
   -- Track this customer
   if not trackedCustomers[netid] then
-    trackedCustomers[netid] = { ped = ped, waveThread = nil }
-    table.insert(State.allPeds, ped)
+    trackedCustomers[netid] = { ped = ped, nextWaveTime = nil }
 
     -- Setup ox_target interactions
     exports.ox_target:addLocalEntity(ped, {
@@ -237,20 +227,23 @@ AddStateBagChangeHandler('waiterCustomer', nil, function(bagName, _, value, _, r
   handleCustomerStatus(ped, value)
 end)
 
--- Cleanup when customer entity is deleted
+-- Centralized customer management thread
 CreateThread(function()
   while true do
     Wait(1000)
     for netid, data in pairs(trackedCustomers) do
+      -- Cleanup deleted entities
       if not DoesEntityExist(data.ped) then
-        -- Remove from tracking
-        for k, v in pairs(State.allPeds) do
-          if v == data.ped then
-            table.remove(State.allPeds, k)
-            break
+        trackedCustomers[netid] = nil
+      else
+        -- Handle wave animations for waiting customers
+        local customerData = Entity(data.ped).state.waiterCustomer
+        if customerData and customerData.status == 'waiting_order' then
+          if data.nextWaveTime and GetGameTimer() >= data.nextWaveTime then
+            PlayAnimUpper(data.ped, clientConfig.Anims.Wave.dict, clientConfig.Anims.Wave.anim)
+            data.nextWaveTime = GetGameTimer() + math.random(sharedConfig.WaveIntervalMin, sharedConfig.WaveIntervalMax)
           end
         end
-        trackedCustomers[netid] = nil
       end
     end
   end

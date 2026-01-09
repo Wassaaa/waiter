@@ -1,5 +1,5 @@
 -- Furniture and Restaurant Setup
-local config = require 'config.client'
+local clientConfig = require 'config.client'
 local sharedConfig = require 'config.shared'
 
 function SetupKitchen()
@@ -9,9 +9,16 @@ function SetupKitchen()
     return
   end
 
-  local grill = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
-  if not DoesEntityExist(grill) then
-    lib.print.error('Grill entity does not exist')
+  -- Wait for entity to stream in (with timeout)
+  local grill = lib.waitFor(function()
+    local entity = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
+    if DoesEntityExist(entity) then
+      return entity
+    end
+  end, 'Grill entity failed to stream in', 10000)
+
+  if not grill then
+    lib.print.error('Grill entity does not exist after timeout')
     return
   end
 
@@ -42,12 +49,8 @@ function SetupKitchen()
 end
 
 function DeleteWorldProps()
-  local propsToDelete = {
-    joaat('prop_chair_01a'),
-    joaat('prop_table_01'),
-  }
-
-  local centerCoord = vector3(config.EntranceCoords.x, config.EntranceCoords.y, config.EntranceCoords.z)
+  local centerCoord = vector3(sharedConfig.EntranceCoords.x, sharedConfig.EntranceCoords.y, sharedConfig.EntranceCoords
+    .z)
   local deletedCount = 0
 
   -- Get ALL objects in the world
@@ -60,14 +63,14 @@ function DeleteWorldProps()
 
     -- Check if this object is one of our target hashes and within radius
     local isTargetHash = false
-    for _, hash in ipairs(propsToDelete) do
+    for _, hash in ipairs(sharedConfig.PropsToDelete) do
       if model == hash then
         isTargetHash = true
         break
       end
     end
 
-    if isTargetHash and dist <= config.CleanupRadius then
+    if isTargetHash and dist <= clientConfig.CleanupRadius then
       -- Check if this is one of OUR spawned entities by network ID
       local objNetId = NetworkGetNetworkIdFromEntity(obj)
       local isOurFurniture = false
@@ -80,11 +83,6 @@ function DeleteWorldProps()
             break
           end
         end
-      end
-
-      -- Check against grill
-      if GlobalState.waiterGrill and GlobalState.waiterGrill == objNetId then
-        isOurFurniture = true
       end
 
       if not isOurFurniture then
@@ -102,72 +100,54 @@ function DeleteWorldProps()
 end
 
 function SetupRestaurant()
-  -- Check if restaurant is already set up by another player
-  if GlobalState.waiterFurniture then
-    lib.notify({ type = 'info', description = 'Restaurant is already set up' })
+  local alreadySetup = GlobalState.waiterFurniture ~= nil
 
-    -- Get existing furniture from GlobalState and populate our tracking
-    local furniture = GlobalState.waiterFurniture
-    for _, item in ipairs(furniture) do
-      local obj = NetworkGetEntityFromNetworkId(item.netid)
-      if DoesEntityExist(obj) then
-        if item.type == 'chair' then
-          local finalCoords = GetEntityCoords(obj)
-          table.insert(State.validSeats, {
-            netid = item.netid,
-            coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
-            isOccupied = false,
-            id = #State.validSeats + 1
-          })
-        end
-      end
+  -- If not already setup, request server to spawn
+  if not alreadySetup then
+    CleanupScene()
+    lib.print.info('Requesting server to spawn furniture')
+
+    local success = lib.callback.await('waiter:server:setupRestaurant', false)
+    if not success then
+      lib.notify({ type = 'error', description = 'Failed to setup restaurant' })
+      return
     end
 
-    -- Clean up world props now that we know what's ours
-    DeleteWorldProps()
-
-    SetupKitchen()
-    State.isRestaurantOpen = true
-    lib.print.info(('Restaurant already open! Seats: %d'):format(#State.validSeats))
-    return
+    -- Start customer spawning (only needed once)
+    lib.callback.await('waiter:server:startCustomerSpawning', false)
+  else
+    lib.notify({ type = 'info', description = 'Restaurant is already set up' })
   end
 
-  -- Fresh setup
-  CleanupScene()
-
-  lib.print.info('Requesting server to spawn furniture')
-  local success = lib.callback.await('waiter:server:setupRestaurant', false)
-
-  if not success then
-    lib.notify({ type = 'error', description = 'Failed to setup restaurant' })
-    return
-  end
-
-  -- Wait for GlobalState to be populated by server
+  -- Wait for GlobalState to be populated
   local furniture = lib.waitFor(function()
     if GlobalState.waiterFurniture then return GlobalState.waiterFurniture end
   end, 'Furniture not spawned by server', 5000)
 
   if not furniture then
-    lib.print.error('Furniture GlobalState not set')
+    lib.notify({ type = 'error', description = 'Failed to load restaurant' })
     return
   end
 
-  -- Get furniture entities and populate our tracking
+  -- Load furniture entities and populate seat tracking
   lib.print.info(('Processing %d furniture pieces'):format(#furniture))
   for _, item in ipairs(furniture) do
-    local obj = NetworkGetEntityFromNetworkId(item.netid)
-
-    if DoesEntityExist(obj) then
-      if item.type == 'chair' then
-        local finalCoords = GetEntityCoords(obj)
-        table.insert(State.validSeats, {
-          netid = item.netid,
-          coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
-          isOccupied = false,
-          id = #State.validSeats + 1
-        })
+    -- Wait for entity to stream in
+    local obj = lib.waitFor(function()
+      local entity = NetworkGetEntityFromNetworkId(item.netid)
+      if DoesEntityExist(entity) then
+        return entity
       end
+    end, ('Furniture %s failed to stream in'):format(item.type), 10000)
+
+    if obj and item.type == 'chair' then
+      local finalCoords = GetEntityCoords(obj)
+      table.insert(State.validSeats, {
+        netid = item.netid,
+        coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
+        isOccupied = false,
+        id = #State.validSeats + 1
+      })
     end
   end
 
@@ -176,10 +156,7 @@ function SetupRestaurant()
 
   SetupKitchen()
   State.isRestaurantOpen = true
-  lib.print.info(('Restaurant Open! Seats: %d'):format(#State.validSeats))
-
-  -- Start customer spawning on server
-  lib.callback.await('waiter:server:startCustomerSpawning', false)
+  lib.print.info(('Restaurant %s! Seats: %d'):format(alreadySetup and 'joined' or 'opened', #State.validSeats))
 
   -- Thread: Keep world props deleted
   CreateThread(function()
