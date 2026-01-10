@@ -156,8 +156,8 @@ return {
   PaymentType     = 'cash', -- 'cash' or 'bank'
 
   -- Job Integration (set JobName to nil to disable job requirement)
-  JobName         = nil,   -- Set to 'waiter' when you create the job in shared/jobs.lua
-  RequireOnDuty   = false, -- Require player to be on duty to work
+  JobName         = 'waiter', -- Set to 'waiter' when you create the job in shared/jobs.lua
+  RequireOnDuty   = false,    -- Require player to be on duty to work
 
   -- Gameplay Limits
   MaxHandItems    = 6, -- Max items on tray at once

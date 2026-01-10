@@ -5,6 +5,9 @@ local sharedConfig = require 'config.shared'
 -- Track customer peds and their wave timing
 local trackedCustomers = {} -- [netid] = { ped, nextWaveTime }
 
+-- Helper alias for consistency/simplicity in this file
+local IsWaiter = State.IsWaiter
+
 ---Handle customer status changes via statebag
 ---@param ped number The ped entity
 ---@param customerData table Customer data from statebag
@@ -17,9 +20,11 @@ local function handleCustomerStatus(ped, customerData)
   -- Apply furniture ghosting
   if GlobalState.waiterFurniture then
     for _, item in ipairs(GlobalState.waiterFurniture) do
-      local prop = NetworkGetEntityFromNetworkId(item.netid)
-      if DoesEntityExist(prop) then
-        SetEntityNoCollisionEntity(prop, ped, false)
+      if NetworkDoesNetworkIdExist(item.netid) then
+        local prop = NetworkGetEntityFromNetworkId(item.netid)
+        if DoesEntityExist(prop) then
+          SetEntityNoCollisionEntity(prop, ped, false)
+        end
       end
     end
   end
@@ -63,7 +68,9 @@ local function handleCustomerStatus(ped, customerData)
     PlayAnimUpper(ped, clientConfig.Anims.Eat.dict, clientConfig.Anims.Eat.anim, true)
   elseif status == 'leaving_angry' then
     -- Angry animation
-    lib.notify({ type = 'warning', description = 'Customer left angry!' })
+    if IsWaiter() then
+      lib.notify({ type = 'warning', description = 'Customer left angry!' })
+    end
     PlayAnimUpper(ped, clientConfig.Anims.Anger.dict, clientConfig.Anims.Anger.anim)
     Wait(1500)
     -- Walk to exit and fade out when close
@@ -122,7 +129,9 @@ local function TakeOrder(customerData)
     orderText = orderText .. sharedConfig.Actions[item].label .. (i < #customerData.order and ", " or "")
   end
 
-  lib.notify({ title = 'New Order', description = orderText, type = 'info', duration = 10000 })
+  if IsWaiter() then
+    lib.notify({ title = 'New Order', description = orderText, type = 'info', duration = 10000 })
+  end
   TriggerServerEvent('waiter:server:takeOrder', customerData.id)
 end
 
@@ -145,6 +154,8 @@ local function DeliverFood(customerData)
   end
 
   -- Process Results
+  if not IsWaiter() then return end
+
   if itemsDelivered > 0 then
     if #customerData.order == 0 then
       -- Order Complete
@@ -206,6 +217,7 @@ AddStateBagChangeHandler('waiterCustomer', nil, function(bagName, _, value, _, r
         icon = 'fa-solid fa-clipboard',
         distance = 2.0,
         canInteract = function()
+          if not IsWaiter() then return false end
           local data = Entity(ped).state.waiterCustomer
           return data and data.status == 'waiting_order'
         end,
@@ -220,6 +232,7 @@ AddStateBagChangeHandler('waiterCustomer', nil, function(bagName, _, value, _, r
         icon = 'fa-solid fa-utensils',
         distance = 2.0,
         canInteract = function()
+          if not IsWaiter() then return false end
           local data = Entity(ped).state.waiterCustomer
           return data and data.status == 'waiting_food'
         end,

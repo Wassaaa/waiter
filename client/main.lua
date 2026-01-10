@@ -17,6 +17,7 @@ local function SetupManagementZone()
         icon = mgmt.target.open.icon,
         label = mgmt.target.open.label,
         canInteract = function()
+          if not State.IsWaiter() then return false end
           return not GlobalState.WaiterOpen
         end,
         onSelect = function()
@@ -28,6 +29,7 @@ local function SetupManagementZone()
         icon = mgmt.target.close.icon,
         label = mgmt.target.close.label,
         canInteract = function()
+          if not State.IsWaiter() then return false end
           return GlobalState.WaiterOpen
         end,
         onSelect = function()
@@ -39,10 +41,33 @@ local function SetupManagementZone()
   lib.print.info('Management zone setup at ' .. tostring(mgmt.coords))
 end
 
+-- Job Events
+local function UpdateJob(job)
+  State.PlayerJob = job
+end
+
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+  local player = exports.qbx_core:GetPlayerData()
+  lib.print.info("I loaded")
+  if player then UpdateJob(player.job) end
+end)
+
+RegisterNetEvent('QBCore:Client:OnJobUpdate', function(JobInfo)
+  UpdateJob(JobInfo)
+end)
+
+-- Initialize
+CreateThread(function()
+  if GetResourceState('qbx_core') == 'started' then
+    local player = exports.qbx_core:GetPlayerData()
+    if player then UpdateJob(player.job) end
+  end
+end)
+
 -- Monitor Global State Changes
 AddStateBagChangeHandler('WaiterOpen', 'global', function(bagName, key, value, _reserved, replicated)
   lib.print.info(('Restaurant state (%s) changed to: %s (Replicated: %s)'):format(bagName, tostring(value),
-  tostring(replicated)))
+    tostring(replicated)))
 end)
 
 -- Initialize

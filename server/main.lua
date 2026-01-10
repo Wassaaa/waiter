@@ -59,7 +59,7 @@ RegisterNetEvent('waiter:server:toggleRestaurant', function()
   end
 end)
 
----@param itemsDelivered number Number of items delivered to customer
+---@param itemsDelivered number Number of items delivered to customer (unused for calculation now)
 RegisterNetEvent('waiter:pay', function(itemsDelivered)
   local src = source --[[@as number]]
 
@@ -74,11 +74,21 @@ RegisterNetEvent('waiter:pay', function(itemsDelivered)
   local player = exports.qbx_core:GetPlayer(src)
   if not player then return end
 
-  local amount = itemsDelivered * config.PayPerItem
+  -- Calculate Tip based on Job Grade Payment
+  -- Default to config.PayPerItem if job payment is missing or 0 (e.g. unemployed/side job)
+  local basePay = player.PlayerData.job.payment
+  if not basePay or basePay == 0 then
+    basePay = config.PayPerItem
+  end
+
+  -- Random variation: +/- 20%
+  local multiplier = math.random(80, 120) / 100.0
+  local amount = math.floor(basePay * multiplier)
+
   local success = player.Functions.AddMoney(config.PaymentType, amount, 'waiter-job-payment')
 
   if success then
-    exports.qbx_core:Notify(src, ('Earned $%s for %s items!'):format(amount, itemsDelivered), 'success')
+    exports.qbx_core:Notify(src, ('Received $%s in tips!'):format(amount), 'success')
   else
     exports.qbx_core:Notify(src, 'Payment failed!', 'error')
   end

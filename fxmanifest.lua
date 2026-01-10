@@ -24,11 +24,11 @@ server_scripts {
 
 client_scripts {
   'client/state.lua',
+  'client/main.lua',
   'client/tray.lua',
   'client/tray_statebag.lua',
   'client/customers.lua',
   'client/furniture.lua',
-  'client/main.lua',
 }
 
 dependencies {

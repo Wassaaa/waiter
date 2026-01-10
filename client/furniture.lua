@@ -35,6 +35,9 @@ local function GetKitchenByEntity(entity)
   return nil
 end
 
+-- Helper alias
+local IsWaiter = State.IsWaiter
+
 -- Setup ox_target options for all kitchen props
 -- Uses model-based targeting with canInteract to verify specific entities
 function SetupKitchenTargets()
@@ -60,6 +63,7 @@ function SetupKitchenTargets()
           label = target.label or defaults.label:format(actionData.label or actionKey),
           distance = target.distance or defaults.distance,
           canInteract = function(entity)
+            if not IsWaiter() then return false end
             local k = GetKitchenByEntity(entity)
             if not k or not k.actions then return false end
             for _, a in ipairs(k.actions) do
@@ -166,20 +170,6 @@ function LoadFurnitureData()
     return
   end
 
-  -- Load furniture entities and populate seat tracking
-  lib.print.info(('Processing %d furniture pieces'):format(#furniture))
-  for _, item in ipairs(furniture) do
-    -- Wait for entity to stream in
-    local _ = lib.waitFor(function()
-      if NetworkDoesNetworkIdExist(item.netid) then
-        local entity = NetworkGetEntityFromNetworkId(item.netid)
-        if DoesEntityExist(entity) then
-          return entity
-        end
-      end
-    end, ('Furniture %s failed to stream in'):format(item.type), 10000)
-  end
-
   -- Clean up world props now that we know what's ours
   DeleteWorldProps()
 
@@ -217,7 +207,7 @@ function StartProximityManagement()
         DeleteWorldProps()
       end
 
-      Wait(2000) -- Check every 2 seconds
+      Wait(2000)
     end
 
     cleanupThreadActive = false

@@ -1,7 +1,14 @@
 -- Shared state management
+local sharedConfig = require 'config.shared'
+
 State = {
-  restaurantLoaded = false
+  restaurantLoaded = false,
+  PlayerJob = {}
 }
+
+function State.IsWaiter()
+  return sharedConfig.JobName and State.PlayerJob.name == sharedConfig.JobName
+end
 
 -- Utility Functions
 function SafeDelete(entity)
