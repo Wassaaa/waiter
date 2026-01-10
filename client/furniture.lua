@@ -151,7 +151,7 @@ end
 
 -- Load furniture entities and populate seat tracking
 function LoadFurnitureData()
-  if State.isRestaurantOpen then
+  if State.restaurantLoaded then
     lib.print.info('Furniture already loaded')
     return
   end
@@ -170,7 +170,7 @@ function LoadFurnitureData()
   lib.print.info(('Processing %d furniture pieces'):format(#furniture))
   for _, item in ipairs(furniture) do
     -- Wait for entity to stream in
-    local obj = lib.waitFor(function()
+    local _ = lib.waitFor(function()
       if NetworkDoesNetworkIdExist(item.netid) then
         local entity = NetworkGetEntityFromNetworkId(item.netid)
         if DoesEntityExist(entity) then
@@ -178,23 +178,13 @@ function LoadFurnitureData()
         end
       end
     end, ('Furniture %s failed to stream in'):format(item.type), 10000)
-
-    if obj and item.type == 'chair' then
-      local finalCoords = GetEntityCoords(obj)
-      table.insert(State.validSeats, {
-        netid = item.netid,
-        coords = vector4(finalCoords.x, finalCoords.y, finalCoords.z, item.coords.w),
-        isOccupied = false,
-        id = #State.validSeats + 1
-      })
-    end
   end
 
   -- Clean up world props now that we know what's ours
   DeleteWorldProps()
 
-  State.isRestaurantOpen = true
-  lib.print.info(('Furniture loaded! Seats: %d'):format(#State.validSeats))
+  State.restaurantLoaded = true
+  lib.print.info('Furniture loaded!')
 end
 
 -- Proximity management thread
@@ -205,7 +195,7 @@ function StartProximityManagement()
   CreateThread(function()
     lib.print.info('Proximity management thread started')
 
-    while State.isRestaurantOpen do
+    while State.restaurantLoaded do
       local wasInProximity = isInProximity
       isInProximity = IsPlayerInRange()
 
@@ -241,6 +231,7 @@ AddStateBagChangeHandler('waiterFurniture', 'global', function(_, _, value)
     lib.print.info('GlobalState.waiterFurniture changed, loading furniture')
     LoadFurnitureData()
     SetupKitchenTargets()
+    StartProximityManagement()
   else
     lib.print.info('GlobalState.waiterFurniture cleared, cleaning up')
     CleanupScene()

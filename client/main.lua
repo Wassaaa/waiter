@@ -17,7 +17,7 @@ local function SetupManagementZone()
         icon = mgmt.target.open.icon,
         label = mgmt.target.open.label,
         canInteract = function()
-          return not GlobalState.isRestaurantOpen
+          return not GlobalState.WaiterOpen
         end,
         onSelect = function()
           TriggerServerEvent('waiter:server:toggleRestaurant')
@@ -28,7 +28,7 @@ local function SetupManagementZone()
         icon = mgmt.target.close.icon,
         label = mgmt.target.close.label,
         canInteract = function()
-          return GlobalState.isRestaurantOpen
+          return GlobalState.WaiterOpen
         end,
         onSelect = function()
           TriggerServerEvent('waiter:server:toggleRestaurant')
@@ -38,6 +38,12 @@ local function SetupManagementZone()
   })
   lib.print.info('Management zone setup at ' .. tostring(mgmt.coords))
 end
+
+-- Monitor Global State Changes
+AddStateBagChangeHandler('WaiterOpen', 'global', function(bagName, key, value, _reserved, replicated)
+  lib.print.info(('Restaurant state (%s) changed to: %s (Replicated: %s)'):format(bagName, tostring(value),
+  tostring(replicated)))
+end)
 
 -- Initialize
 SetupManagementZone()

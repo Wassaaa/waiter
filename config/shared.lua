@@ -47,7 +47,7 @@ return {
       type = 'kitchen',
       hash = joaat('prop_bbq_5'),
       coords = vector4(-1273.61, -885.89, 10.93, 310.93),
-      actions = { 'burger', 'fries', 'drink', 'clearTray' },
+      actions = { 'burger', 'fries', 'drink', 'coffee', 'clearTray' },
     }
   },
 
@@ -82,6 +82,14 @@ return {
       prop = 'prop_food_chips',
       target = { icon = 'fa-solid fa-plus', label = 'Grab Fries' },
       offset = { x = 0.0004, y = 0.0007, z = -0.0156, rz = -0.2 },
+    },
+    coffee = {
+      type = 'food',
+      label = 'Coffee',
+      price = 15,
+      prop = 'prop_food_cb_coffee',
+      target = { icon = 'fa-solid fa-coffee', label = 'Get Coffee' },
+      offset = { y = 0.0003, z = -0.0077, rx = -3.2, ry = 1.7, rz = -0.3 },
     },
     clearTray = {
       type = 'utility',

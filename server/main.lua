@@ -28,31 +28,33 @@ local function canPlayerWork(source)
   return true
 end
 
+-- Initialize Global State
+GlobalState.WaiterOpen = false
+
 ---Toggle restaurant state
----@param source number Source of the player toggling it
 RegisterNetEvent('waiter:server:toggleRestaurant', function()
-  local src = source
+  local src = source --[[@as number]]
   local canWork, reason = canPlayerWork(src)
   if not canWork then
     return exports.qbx_core:Notify(src, reason, 'error')
   end
 
-  if GlobalState.isRestaurantOpen then
+  if GlobalState.WaiterOpen then
     -- Close it
-    GlobalState.isRestaurantOpen = false
+    GlobalState.WaiterOpen = false
     ServerCustomers.Cleanup()
     ServerFurniture.Cleanup()
     exports.qbx_core:Notify(src, 'Restaurant closed', 'success')
   else
     -- Open it
-    GlobalState.isRestaurantOpen = true
+    GlobalState.WaiterOpen = true
     local success = ServerFurniture.Setup()
     if success then
       ServerCustomers.StartSpawning()
       exports.qbx_core:Notify(src, 'Restaurant opened', 'success')
     else
       exports.qbx_core:Notify(src, 'Failed to open restaurant', 'error')
-      GlobalState.isRestaurantOpen = false
+      GlobalState.WaiterOpen = false
     end
   end
 end)

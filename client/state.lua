@@ -1,8 +1,6 @@
 -- Shared state management
 State = {
-  validSeats = {},
-  customers = {},
-  isRestaurantOpen = false
+  restaurantLoaded = false
 }
 
 -- Utility Functions
@@ -27,12 +25,8 @@ function CleanupScene()
   TriggerServerEvent('waiter:server:modifyTray', 'clear')
 
   -- Remove ox_target options from kitchen props
-  if RemoveKitchenTargets then
-    RemoveKitchenTargets()
-  end
+  RemoveKitchenTargets()
 
   -- Reset Logic
-  State.validSeats = {}
-  State.customers = {}
-  State.isRestaurantOpen = false
+  State.restaurantLoaded = false
 end

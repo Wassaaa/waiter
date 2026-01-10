@@ -232,7 +232,7 @@ function ServerCustomers.StartSpawning()
   CreateThread(function()
     Wait(2000)
     -- Loop while restaurant is open and furniture is loaded
-    while GlobalState.isRestaurantOpen and GlobalState.waiterFurniture do
+    while GlobalState.WaiterOpen and GlobalState.waiterFurniture do
       SpawnCustomer()
       Wait(sharedConfig.SpawnInterval)
     end
