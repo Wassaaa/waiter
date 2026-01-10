@@ -17,17 +17,7 @@ local function handleCustomerStatus(ped, customerData)
   local status = customerData.status
   local seatCoords = customerData.seatCoords
 
-  -- Apply furniture ghosting
-  if GlobalState.waiterFurniture then
-    for _, item in ipairs(GlobalState.waiterFurniture) do
-      if NetworkDoesNetworkIdExist(item.netid) then
-        local prop = NetworkGetEntityFromNetworkId(item.netid)
-        if DoesEntityExist(prop) then
-          SetEntityNoCollisionEntity(prop, ped, false)
-        end
-      end
-    end
-  end
+
 
   if status == 'walking_in' then
     -- Walk to seat

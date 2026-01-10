@@ -177,6 +177,23 @@ function LoadFurnitureData()
   lib.print.info('Furniture loaded!')
 end
 
+-- Disable collision on chairs to allow ped navigation
+local function UpdateFurnitureCollision()
+  if not GlobalState.waiterFurniture then return end
+
+  for _, item in ipairs(GlobalState.waiterFurniture) do
+    if item.type == 'chair' then
+      if NetworkDoesNetworkIdExist(item.netid) then
+        local entity = NetworkGetEntityFromNetworkId(item.netid)
+        if DoesEntityExist(entity) then
+          -- Disable collision completely (ghost mode)
+          SetEntityCollision(entity, false, false)
+        end
+      end
+    end
+  end
+end
+
 -- Proximity management thread
 function StartProximityManagement()
   if cleanupThreadActive then return end
@@ -193,6 +210,7 @@ function StartProximityManagement()
       if isInProximity and not wasInProximity then
         lib.print.info('Player entered restaurant area')
         DeleteWorldProps() -- Initial cleanup on entry
+        UpdateFurnitureCollision()
       end
 
       -- Player left proximity
@@ -205,6 +223,7 @@ function StartProximityManagement()
       -- Periodic cleanup while in proximity (world props can respawn)
       if isInProximity then
         DeleteWorldProps()
+        UpdateFurnitureCollision()
       end
 
       Wait(2000)
