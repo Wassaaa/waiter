@@ -117,12 +117,3 @@ end)
 lib.checkDependency('ox_lib', '3.0.0', true)
 lib.checkDependency('ox_target', '1.0.0', true)
 lib.checkDependency('qbx_core', '1.0.0', true)
-
--- Auto-Start Restaurant (Debug)
-if clientConfig.AutoStartRestaurant then
-  CreateThread(function()
-    Wait(1000)
-    lib.print.info('Auto-Starting Restaurant Setup')
-    SetupRestaurant()
-  end)
-end

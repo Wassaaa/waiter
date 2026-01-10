@@ -1,11 +1,12 @@
 -- Shared configuration (used by both client and server)
 return {
   -- Locations
-  EntranceCoords  = vector4(-1266.05, -891.02, 10.48, 26.34),
-  ProximityRadius = 30.0, -- Distance for customer spawning, furniture loading, and prop cleanup
+  EntranceCoords   = vector4(-1266.05, -891.02, 10.48, 26.34),
+  ManagementCoords = vector4(-1269.15, -878.01, 10.93, 37.34),   -- Where to open/close restaurant
+  ProximityRadius  = 30.0,                                       -- Distance for customer spawning, furniture loading, and prop cleanup
 
   -- World Props to Delete (models that exist in the world at this location)
-  PropsToDelete   = {
+  PropsToDelete    = {
     joaat('prop_chair_01a'),
     joaat('prop_table_01'),
   },
@@ -13,7 +14,7 @@ return {
   -- Furniture Layout (spawned by server, tracked by client)
   -- Types: 'table', 'chair', 'kitchen'
   -- Kitchen props can have 'items' array to specify which menu items can be picked up from them
-  Furniture       = {
+  Furniture        = {
     -- Tables (type = 'table')
     { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1267.09, -881.66, 10.94, 121.61) },
     { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1265.67, -880.34, 10.94, 34.29) },
@@ -50,7 +51,7 @@ return {
   -- label: display name (used in notifications, orders) - required for 'food' type
   -- price/prop: required for 'food' type
   -- offset: {x, y, z, rx, ry, rz} adjustments when placed on tray (optional)
-  Actions         = {
+  Actions          = {
     burger = {
       type = 'food',
       label = 'Burger',
@@ -82,7 +83,7 @@ return {
   },
 
   -- Tray Configuration
-  Tray            = {
+  Tray             = {
     prop = 'prop_food_tray_01',
     -- Attachment to player hand (bone 57005 = right hand)
     bone = 57005,
@@ -106,7 +107,7 @@ return {
   },
 
   -- Defaults for ox_target options (used when item.target.X is missing)
-  TargetDefaults  = {
+  TargetDefaults   = {
     action = 'add',
     icon = 'fa-solid fa-plus',
     label = 'Pick up %s', -- %s = item label
@@ -114,19 +115,19 @@ return {
   },
 
   -- Timings (in milliseconds)
-  SpawnInterval   = 10000,  -- Time between customer spawns
-  WalkTimeout     = 60000,  -- Timeout if customer gets stuck
-  PatienceOrder   = 10000,  -- How long customer waits for order to be taken (DEBUG: 10s)
-  PatienceFood    = 300000, -- How long customer waits for food delivery (5 minutes)
-  EatTime         = 10000,  -- How long customer takes to eat
-  WaveIntervalMin = 5000,   -- Min time between waves
-  WaveIntervalMax = 10000,  -- Max time between waves
-  SitDelay        = 2000,   -- Delay after sitting before waiting for order
-  WalkoutTimeout  = 30000,  -- Max time for customer to walk out before forced cleanup
-  FadeoutDuration = 1000,   -- Time for customer fadeout (in ms)
+  SpawnInterval    = 10000, -- Time between customer spawns
+  WalkTimeout      = 60000, -- Timeout if customer gets stuck
+  PatienceOrder    = 10000, -- How long customer waits for order to be taken (DEBUG: 10s)
+  PatienceFood     = 300000, -- How long customer waits for food delivery (5 minutes)
+  EatTime          = 10000, -- How long customer takes to eat
+  WaveIntervalMin  = 5000,  -- Min time between waves
+  WaveIntervalMax  = 10000, -- Max time between waves
+  SitDelay         = 2000,  -- Delay after sitting before waiting for order
+  WalkoutTimeout   = 30000, -- Max time for customer to walk out before forced cleanup
+  FadeoutDuration  = 1000,  -- Time for customer fadeout (in ms)
 
   -- Customer Models
-  Models          = {
+  Models           = {
     'a_f_y_hipster_01',
     'a_m_y_business_02',
     'g_m_y_ballasout_01',
@@ -136,15 +137,15 @@ return {
   },
 
   -- Payment Settings
-  PayPerItem      = 50,     -- Money earned per item delivered
-  PaymentType     = 'cash', -- 'cash' or 'bank'
+  PayPerItem       = 50,    -- Money earned per item delivered
+  PaymentType      = 'cash', -- 'cash' or 'bank'
 
   -- Job Integration (set JobName to nil to disable job requirement)
-  JobName         = nil,   -- Set to 'waiter' when you create the job in shared/jobs.lua
-  RequireOnDuty   = false, -- Require player to be on duty to work
+  JobName          = nil,  -- Set to 'waiter' when you create the job in shared/jobs.lua
+  RequireOnDuty    = false, -- Require player to be on duty to work
 
   -- Gameplay Limits
-  MaxHandItems    = 6, -- Max items on tray at once
-  OrderSizeMin    = 1, -- Min items per customer order
-  OrderSizeMax    = 3, -- Max items per customer order
+  MaxHandItems     = 6, -- Max items on tray at once
+  OrderSizeMin     = 1, -- Min items per customer order
+  OrderSizeMax     = 3, -- Max items per customer order
 }
