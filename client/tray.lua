@@ -99,7 +99,7 @@ function SpawnTrayProp(ped)
   local hash = joaat(trayConfig.prop)
 
   lib.requestModel(hash)
-  local trayProp = CreateObject(hash, 0, 0, 0, true, true, false)
+  local trayProp = CreateObject(hash, 0, 0, 0, false, true, false)
 
   if not DoesEntityExist(trayProp) then return nil end
 
@@ -132,7 +132,7 @@ function SpawnItemOnTray(trayProp, slotIndex, itemKey)
   if not pos then return nil end
 
   lib.requestModel(hash)
-  local itemProp = CreateObject(hash, 0, 0, 0, true, true, false)
+  local itemProp = CreateObject(hash, 0, 0, 0, false, true, false)
 
   if not DoesEntityExist(itemProp) then return nil end
 
