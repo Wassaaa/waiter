@@ -49,15 +49,15 @@ function SetupKitchenTargets()
 
     -- Add options for each action this kitchen supports
     for _, actionKey in ipairs(kitchen.actions or {}) do
-      local itemData = sharedConfig.Items[actionKey]
-      if itemData then
-        local target = itemData.target or {}
+      local actionData = sharedConfig.Actions[actionKey]
+      if actionData then
+        local target = actionData.target or {}
         local action = target.action or defaults.action
 
         table.insert(options, {
           name = 'waiter_' .. actionKey,
           icon = target.icon or defaults.icon,
-          label = target.label or defaults.label:format(itemData.label or actionKey),
+          label = target.label or defaults.label:format(actionData.label or actionKey),
           distance = target.distance or defaults.distance,
           canInteract = function(entity)
             local k = GetKitchenByEntity(entity)
@@ -86,7 +86,7 @@ end
 function RemoveKitchenTargets()
   for hash, _ in pairs(kitchenTargetsRegistered) do
     -- Remove all possible action options
-    for actionKey, _ in pairs(sharedConfig.Items) do
+    for actionKey, _ in pairs(sharedConfig.Actions) do
       exports.ox_target:removeModel(hash, 'waiter_' .. actionKey)
     end
     lib.print.info(('Kitchen target removed for hash %s'):format(hash))

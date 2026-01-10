@@ -43,14 +43,16 @@ return {
     }
   },
 
-  -- Kitchen Actions (items to pick up + utility actions)
+  -- Kitchen Actions
+  -- type: 'food' = orderable item with prop, 'utility' = action only (clear tray, etc)
   -- target.action: 'add' (default) adds item to tray, 'clear' clears tray
   -- target.icon/label/distance: ox_target options - all optional with defaults
-  -- label: display name (used in notifications, orders)
-  -- price/prop: only needed for actual food items
+  -- label: display name (used in notifications, orders) - required for 'food' type
+  -- price/prop: required for 'food' type
   -- offset: {x, y, z, rx, ry, rz} adjustments when placed on tray (optional)
-  Items           = {
+  Actions         = {
     burger = {
+      type = 'food',
       label = 'Burger',
       price = 25,
       prop = 'prop_cs_burger_01',
@@ -58,6 +60,7 @@ return {
       offset = { x = 0.0003, y = 0.0012, z = 0.0235, rx = -3.2, ry = 1.7, rz = -0.1 },
     },
     drink = {
+      type = 'food',
       label = 'Drink',
       price = 10,
       prop = 'prop_ecola_can',
@@ -65,6 +68,7 @@ return {
       offset = { x = -0.0005, z = 0.0490, rx = -3.2, ry = 1.7, rz = -0.2 },
     },
     fries = {
+      type = 'food',
       label = 'Fries',
       price = 15,
       prop = 'prop_food_chips',
@@ -72,6 +76,7 @@ return {
       offset = { x = 0.0004, y = 0.0007, z = -0.0156, rz = -0.2 },
     },
     clearTray = {
+      type = 'utility',
       target = { icon = 'fa-solid fa-trash', label = 'Clear Tray', action = 'clear' },
     },
   },
@@ -140,4 +145,6 @@ return {
 
   -- Gameplay Limits
   MaxHandItems    = 6, -- Max items on tray at once
+  OrderSizeMin    = 1, -- Min items per customer order
+  OrderSizeMax    = 3, -- Max items per customer order
 }

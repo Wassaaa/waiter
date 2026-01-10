@@ -5,17 +5,19 @@ local sharedConfig = require 'config.shared'
 local customers = {}
 
 ---Get a random order for customer
----@return table order Array of item names
+---@return table order Array of action keys (food items only)
 local function generateOrder()
-  local itemKeys = {}
-  for k, _ in pairs(sharedConfig.Items) do
-    table.insert(itemKeys, k)
+  local foodKeys = {}
+  for k, v in pairs(sharedConfig.Actions) do
+    if v.type == 'food' then
+      table.insert(foodKeys, k)
+    end
   end
 
-  local orderSize = math.random(1, 3)
+  local orderSize = math.random(sharedConfig.OrderSizeMin, sharedConfig.OrderSizeMax)
   local order = {}
   for i = 1, orderSize do
-    table.insert(order, itemKeys[math.random(1, #itemKeys)])
+    table.insert(order, foodKeys[math.random(1, #foodKeys)])
   end
   return order
 end

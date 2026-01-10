@@ -46,9 +46,9 @@ end
 ---@param itemKey string Item key from config
 ---@return table offset {x, y, z, rx, ry, rz}
 function GetItemOffset(itemKey)
-  local itemData = sharedConfig.Items[itemKey]
+  local actionData = sharedConfig.Actions[itemKey]
   local defaults = sharedConfig.Tray.defaultItemOffset
-  local itemOffset = itemData and itemData.offset or {}
+  local itemOffset = actionData and actionData.offset or {}
 
   return {
     x = itemOffset.x or defaults.x,
@@ -84,9 +84,9 @@ end
 ---@param itemKey string Item key
 ---@return number|nil hash Model hash or nil
 function GetItemPropHash(itemKey)
-  local itemData = sharedConfig.Items[itemKey]
-  if not itemData or not itemData.prop then return nil end
-  return joaat(itemData.prop)
+  local actionData = sharedConfig.Actions[itemKey]
+  if not actionData or not actionData.prop then return nil end
+  return joaat(actionData.prop)
 end
 
 ---Spawn and attach tray prop to ped
@@ -352,7 +352,7 @@ if GetConvarInt('waiter_debug', 0) == 1 then
       return
     end
 
-    if not sharedConfig.Items[itemKey] then
+    if not sharedConfig.Actions[itemKey] then
       print('Invalid item key: ' .. itemKey)
       return
     end
@@ -557,7 +557,7 @@ if GetConvarInt('waiter_debug', 0) == 1 then
       return
     end
 
-    if not sharedConfig.Items[sampleItem] or not sharedConfig.Items[sampleItem].prop then
+    if not sharedConfig.Actions[sampleItem] or not sharedConfig.Actions[sampleItem].prop then
       print('Invalid sample item: ' .. sampleItem)
       print('Use an item with a prop (burger, fries, drink)')
       return

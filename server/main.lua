@@ -61,7 +61,8 @@ RegisterNetEvent('waiter:server:modifyTray', function(action, item)
   local tray = Player(src).state.waiterTray or {}
 
   if action == 'add' then
-    if not item or not config.Items[item] then
+    local actionData = item and config.Actions[item]
+    if not actionData or actionData.type ~= 'food' then
       return exports.qbx_core:Notify(src, 'Invalid item', 'error')
     end
 
@@ -70,14 +71,15 @@ RegisterNetEvent('waiter:server:modifyTray', function(action, item)
     end
 
     table.insert(tray, item)
-    exports.qbx_core:Notify(src, ('Added %s'):format(config.Items[item].label), 'success')
+    exports.qbx_core:Notify(src, ('Added %s'):format(actionData.label), 'success')
   elseif action == 'remove' then
     if not item then return end
 
     for i, val in ipairs(tray) do
       if val == item then
         table.remove(tray, i)
-        exports.qbx_core:Notify(src, ('Removed %s'):format(config.Items[val].label), 'info')
+        local actionData = config.Actions[val]
+        exports.qbx_core:Notify(src, ('Removed %s'):format(actionData and actionData.label or val), 'info')
         break
       end
     end
