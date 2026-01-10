@@ -48,28 +48,55 @@ return {
   -- target.icon/label/distance: ox_target options - all optional with defaults
   -- label: display name (used in notifications, orders)
   -- price/prop: only needed for actual food items
+  -- offset: {x, y, z, rx, ry, rz} adjustments when placed on tray (optional)
   Items           = {
     burger = {
       label = 'Burger',
       price = 25,
       prop = 'prop_cs_burger_01',
       target = { icon = 'fa-solid fa-burger', label = 'Cook Burger' },
+      offset = { z = 0.02 },
     },
     drink = {
       label = 'Drink',
       price = 10,
       prop = 'prop_ecola_can',
       target = { icon = 'fa-solid fa-martini-glass', label = 'Pour Drink' },
+      offset = { z = 0.0 },
     },
     fries = {
       label = 'Fries',
       price = 15,
       prop = 'prop_food_chips',
       target = { icon = 'fa-solid fa-plus', label = 'Grab Fries' },
+      offset = { z = 0.03 },
     },
     clearTray = {
       target = { icon = 'fa-solid fa-trash', label = 'Clear Tray', action = 'clear' },
     },
+  },
+
+  -- Tray Configuration
+  Tray            = {
+    prop = 'prop_food_tray_01',
+    -- Attachment to player hand (bone 57005 = right hand)
+    bone = 57005,
+    offset = { x = 0.1, y = 0.05, z = -0.1 },
+    rotation = { x = 190.0, y = 300.0, z = 50.0 },
+
+    -- Slot positions on the tray (relative to tray prop)
+    -- More slots can be unlocked based on skill in future
+    slots = {
+      { x = 0.0,   y = 0.12,  z = 0.05 }, -- Slot 1: Center Front
+      { x = -0.12, y = -0.08, z = 0.05 }, -- Slot 2: Left Back
+      { x = 0.12,  y = -0.08, z = 0.05 }, -- Slot 3: Right Back
+      -- Future slots (unlockable):
+      -- { x = -0.12, y = 0.12, z = 0.05 },  -- Slot 4: Left Front
+      -- { x = 0.12,  y = 0.12, z = 0.05 },  -- Slot 5: Right Front
+    },
+
+    -- Default item offset (used if item.offset is missing)
+    defaultItemOffset = { x = 0.0, y = 0.0, z = 0.0, rx = 0.0, ry = 0.0, rz = 0.0 },
   },
 
   -- Defaults for ox_target options (used when item.target.X is missing)

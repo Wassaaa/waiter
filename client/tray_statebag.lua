@@ -5,10 +5,22 @@ local sharedConfig = require 'config.shared'
 -- Store tray props for each player {[serverId] = {tray = entity, items = {entities}}}
 local playerTrays = {}
 
----Clean up tray props for a player
+---Clean up tray props for a player (optionally clear animation)
 ---@param playerId number Server ID of player
-local function cleanupPlayerTray(playerId)
-  if not playerTrays[playerId] then return end
+---@param clearAnim boolean? Whether to also clear the animation (default: true)
+local function cleanupPlayerTray(playerId, clearAnim)
+  if clearAnim == nil then clearAnim = true end
+
+  if not playerTrays[playerId] then
+    -- No tracked props, but might still need to clear animation
+    if clearAnim then
+      local ped = GetPlayerPed(GetPlayerFromServerId(playerId))
+      if DoesEntityExist(ped) then
+        ClearPedTasks(ped)
+      end
+    end
+    return
+  end
 
   local trayData = playerTrays[playerId]
   if trayData.tray and DoesEntityExist(trayData.tray) then
@@ -21,6 +33,14 @@ local function cleanupPlayerTray(playerId)
     end
   end
 
+  -- Clear the tray animation only if requested
+  if clearAnim then
+    local ped = GetPlayerPed(GetPlayerFromServerId(playerId))
+    if DoesEntityExist(ped) then
+      ClearPedTasks(ped)
+    end
+  end
+
   playerTrays[playerId] = nil
 end
 
@@ -28,17 +48,13 @@ end
 ---@param playerId number Server ID of player
 ---@param trayItems table Array of item names
 local function updatePlayerTray(playerId, trayItems)
-  -- Clean up old props first
-  cleanupPlayerTray(playerId)
+  local hasItems = trayItems and #trayItems > 0
 
-  -- If empty tray, just clear animation
-  if not trayItems or #trayItems == 0 then
-    local ped = GetPlayerPed(GetPlayerFromServerId(playerId))
-    if DoesEntityExist(ped) then
-      ClearPedTasks(ped)
-    end
-    return
-  end
+  -- Clean up old props, only clear animation if tray will be empty
+  cleanupPlayerTray(playerId, not hasItems)
+
+  -- If empty tray, nothing more to do
+  if not hasItems then return end
 
   -- Get the player's ped
   local ped = GetPlayerPed(GetPlayerFromServerId(playerId))
@@ -47,36 +63,19 @@ local function updatePlayerTray(playerId, trayItems)
   -- Play animation
   PlayAnimUpper(ped, clientConfig.Anims.Tray.dict, clientConfig.Anims.Tray.anim, true)
 
-  -- Spawn tray prop
-  local trayHash = joaat("prop_food_tray_01")
-  lib.requestModel(trayHash)
-  local trayProp = CreateObject(trayHash, 0, 0, 0, true, true, false)
-
-  local boneIndex = GetPedBoneIndex(ped, 57005)
-  local x, y, z = 0.1, 0.05, -0.1
-  local rx, ry, rz = 190.0, 300.0, 50.0
-
-  AttachEntityToEntity(trayProp, ped, boneIndex, x, y, z, rx, ry, rz, true, true, false, true, 1, true)
-
-  -- Spawn item props
-  local offsets = {
-    vector3(0.0, 0.12, 0.05),    -- Center Front
-    vector3(-0.12, -0.08, 0.05), -- Left Back
-    vector3(0.12, -0.08, 0.05)   -- Right Back
-  }
+  -- Spawn tray using helper
+  local trayProp = SpawnTrayProp(ped)
+  if not trayProp then return end
 
   local itemProps = {}
-  for i, itemName in ipairs(trayItems) do
-    if sharedConfig.Items[itemName] then
-      local propName = sharedConfig.Items[itemName].prop
-      local hash = joaat(propName)
-      lib.requestModel(hash)
+  local maxSlots = GetAvailableTraySlots()
 
-      local itemObj = CreateObject(hash, 0, 0, 0, true, true, false)
-      local off = offsets[i] or vector3(0, 0, 0)
+  for slotIndex, itemKey in ipairs(trayItems) do
+    if slotIndex > maxSlots then break end
 
-      AttachEntityToEntity(itemObj, trayProp, 0, off.x, off.y, off.z, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
-      table.insert(itemProps, itemObj)
+    local itemProp = SpawnItemOnTray(trayProp, slotIndex, itemKey)
+    if itemProp then
+      table.insert(itemProps, itemProp)
     end
   end
 
@@ -93,7 +92,7 @@ local function updatePlayerTray(playerId, trayItems)
         cleanupPlayerTray(playerId)
         break
       end
-      Wait(60000)
+      Wait(10000)
     end
   end)
 end
