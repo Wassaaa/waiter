@@ -33,9 +33,9 @@ function CleanupScene()
     TriggerServerEvent('waiter:server:cleanupCustomers')
   end
 
-  -- Remove ox_target options from grill model
-  if RemoveKitchenTarget then
-    RemoveKitchenTarget()
+  -- Remove ox_target options from kitchen props
+  if RemoveKitchenTargets then
+    RemoveKitchenTargets()
   end
 
   -- Reset Logic

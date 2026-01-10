@@ -4,7 +4,7 @@ local sharedConfig = require 'config.shared'
 
 local isInProximity = false
 local cleanupThreadActive = false
-local grillTargetRegistered = false
+local kitchenTargetsRegistered = {} -- Track registered kitchen targets by hash
 
 -- Get entrance coords as vec3
 local function GetEntranceVec3()
@@ -18,64 +18,80 @@ local function IsPlayerInRange()
   return #(playerCoords - entrance) <= sharedConfig.ProximityRadius
 end
 
--- Setup kitchen grill ox_target using model-based targeting
--- This works regardless of entity streaming - ox_target handles it internally
-function SetupKitchenTarget()
-  if grillTargetRegistered then return end
+-- Check if entity is one of our kitchen props
+---@param entity number Entity handle to check
+---@return table|nil Kitchen data if found, nil otherwise
+local function GetKitchenByEntity(entity)
+  if not GlobalState.waiterFurniture then return nil end
 
-  local grillHash = sharedConfig.KitchenGrill.hash
-  local options = {}
-
-  -- Generate Add Options
-  for k, v in pairs(sharedConfig.Items) do
-    table.insert(options, {
-      name = 'waiter_add_' .. k,
-      icon = 'fa-solid fa-plus',
-      label = 'Pick up ' .. v.label,
-      distance = 2.0,
-      canInteract = function(entity)
-        -- Only show if restaurant is open and entity is our grill
-        if not GlobalState.waiterGrill then return false end
-        local grillEntity = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
-        return entity == grillEntity
-      end,
-      onSelect = function() ModifyHand('add', k) end
-    })
+  for _, item in ipairs(GlobalState.waiterFurniture) do
+    if item.type == 'kitchen' then
+      local kitchenEntity = NetworkGetEntityFromNetworkId(item.netid)
+      if kitchenEntity == entity then
+        return item
+      end
+    end
   end
-
-  -- Clear Tray Option
-  table.insert(options, {
-    name = 'waiter_clear_tray',
-    icon = 'fa-solid fa-trash',
-    label = 'Clear Tray',
-    distance = 2.0,
-    canInteract = function(entity)
-      if not GlobalState.waiterGrill then return false end
-      local grillEntity = NetworkGetEntityFromNetworkId(GlobalState.waiterGrill)
-      return entity == grillEntity
-    end,
-    onSelect = function() ModifyHand('clear') end
-  })
-
-  exports.ox_target:addModel(grillHash, options)
-  grillTargetRegistered = true
-  lib.print.info('Grill target options registered (model-based)')
+  return nil
 end
 
--- Remove kitchen target (for cleanup)
-function RemoveKitchenTarget()
-  if not grillTargetRegistered then return end
+-- Setup ox_target options for all kitchen props
+-- Uses model-based targeting with canInteract to verify specific entities
+function SetupKitchenTargets()
+  if not GlobalState.waiterFurniture then return end
 
-  local grillHash = sharedConfig.KitchenGrill.hash
+  for _, kitchen in ipairs(GlobalState.waiterFurniture) do
+    if kitchen.type ~= 'kitchen' then goto continue end
+    if kitchenTargetsRegistered[kitchen.hash] then goto continue end
 
-  -- Remove all our options by name
-  for k, _ in pairs(sharedConfig.Items) do
-    exports.ox_target:removeModel(grillHash, 'waiter_add_' .. k)
+    local options = {}
+    local defaults = sharedConfig.TargetDefaults
+
+    -- Add options for each action this kitchen supports
+    for _, actionKey in ipairs(kitchen.actions or {}) do
+      local itemData = sharedConfig.Items[actionKey]
+      if itemData then
+        local target = itemData.target or {}
+        local action = target.action or defaults.action
+
+        table.insert(options, {
+          name = 'waiter_' .. actionKey,
+          icon = target.icon or defaults.icon,
+          label = target.label or defaults.label:format(itemData.label or actionKey),
+          distance = target.distance or defaults.distance,
+          canInteract = function(entity)
+            local k = GetKitchenByEntity(entity)
+            if not k or not k.actions then return false end
+            for _, a in ipairs(k.actions) do
+              if a == actionKey then return true end
+            end
+            return false
+          end,
+          onSelect = function() ModifyHand(action, actionKey) end
+        })
+      end
+    end
+
+    if #options > 0 then
+      exports.ox_target:addModel(kitchen.hash, options)
+      kitchenTargetsRegistered[kitchen.hash] = true
+      lib.print.info(('Kitchen target registered: hash=%s options=%d'):format(kitchen.hash, #options))
+    end
+
+    ::continue::
   end
-  exports.ox_target:removeModel(grillHash, 'waiter_clear_tray')
+end
 
-  grillTargetRegistered = false
-  lib.print.info('Grill target options removed')
+-- Remove all kitchen target options
+function RemoveKitchenTargets()
+  for hash, _ in pairs(kitchenTargetsRegistered) do
+    -- Remove all possible action options
+    for actionKey, _ in pairs(sharedConfig.Items) do
+      exports.ox_target:removeModel(hash, 'waiter_' .. actionKey)
+    end
+    lib.print.info(('Kitchen target removed for hash %s'):format(hash))
+  end
+  kitchenTargetsRegistered = {}
 end
 
 function DeleteWorldProps()
@@ -156,8 +172,8 @@ function SetupRestaurant()
   -- Load furniture data
   LoadFurnitureData()
 
-  -- Register ox_target for grill (model-based, works regardless of streaming)
-  SetupKitchenTarget()
+  -- Register ox_target for kitchen props (model-based, works regardless of streaming)
+  SetupKitchenTargets()
 
   -- Start proximity management thread
   StartProximityManagement()
@@ -248,28 +264,17 @@ function StartProximityManagement()
 end
 
 -- Watch for GlobalState changes to handle late-joining players or remote setup
-AddStateBagChangeHandler('waiterGrill', 'global', function(_, _, value)
+AddStateBagChangeHandler('waiterFurniture', 'global', function(_, _, value)
   if value then
-    lib.print.info('GlobalState.waiterGrill changed, setting up target options')
-    SetupKitchenTarget()
+    lib.print.info('GlobalState.waiterFurniture changed, setting up kitchen targets')
+    SetupKitchenTargets()
   else
-    lib.print.info('GlobalState.waiterGrill cleared, removing target options')
-    RemoveKitchenTarget()
+    lib.print.info('GlobalState.waiterFurniture cleared, removing kitchen targets')
+    RemoveKitchenTargets()
   end
 end)
 
--- Watch for furniture changes (for late-joining players)
-AddStateBagChangeHandler('waiterFurniture', 'global', function(_, _, value)
-  if value and not State.isRestaurantOpen then
-    lib.print.info('GlobalState.waiterFurniture detected, auto-loading')
-    -- Small delay to ensure grill state is also set
-    SetTimeout(500, function()
-      LoadFurnitureData()
-      SetupKitchenTarget()
-      StartProximityManagement()
-    end)
-  end
-end)
+
 
 -- Initialize on resource start
 CreateThread(function()
@@ -279,7 +284,7 @@ CreateThread(function()
   if GlobalState.waiterFurniture then
     lib.print.info('Restaurant already running on resource start, auto-loading')
     LoadFurnitureData()
-    SetupKitchenTarget()
+    SetupKitchenTargets()
     StartProximityManagement()
   end
 end)
