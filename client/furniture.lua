@@ -6,16 +6,10 @@ local isInProximity = false
 local cleanupThreadActive = false
 local kitchenTargetsRegistered = {} -- Track registered kitchen targets by hash
 
--- Get entrance coords as vec3
-local function GetEntranceVec3()
-  return vector3(sharedConfig.EntranceCoords.x, sharedConfig.EntranceCoords.y, sharedConfig.EntranceCoords.z)
-end
-
 -- Check if player is within restaurant proximity
 local function IsPlayerInRange()
   local playerCoords = GetEntityCoords(cache.ped)
-  local entrance = GetEntranceVec3()
-  return #(playerCoords - entrance) <= sharedConfig.ProximityRadius
+  return #(playerCoords - sharedConfig.RestaurantCenter) <= sharedConfig.ProximityRadius
 end
 
 -- Check if entity is one of our kitchen props
@@ -100,7 +94,7 @@ end
 
 -- Manage world prop hiding (persistent engine-level hiding)
 function ManageModelHides(enable)
-  local center = vector3(sharedConfig.EntranceCoords.x, sharedConfig.EntranceCoords.y, sharedConfig.EntranceCoords.z)
+  local center = sharedConfig.RestaurantCenter
   local radius = sharedConfig.ProximityRadius
 
   for _, hash in ipairs(sharedConfig.PropsToDelete) do

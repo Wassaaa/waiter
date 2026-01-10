@@ -8,6 +8,55 @@ local trackedCustomers = {} -- [netid] = { ped, nextWaveTime }
 -- Helper alias for consistency/simplicity in this file
 local IsWaiter = State.IsWaiter
 
+-- Helper for robust pathfinding (handles stuck peds)
+local function SmartWalkTo(ped, x, y, z, options)
+  options = options or {}
+  local distThreshold = options.threshold or 1.0
+  local timeout = options.timeout or sharedConfig.WalkTimeout
+  local onArrive = options.onArrive
+
+  TaskGoToCoordAnyMeans(ped, x, y, z, 1.0, 0, false, 786603, 0xbf800000)
+
+  CreateThread(function()
+    local walkStart = GetGameTimer()
+    local lastPos = GetEntityCoords(ped)
+    local stuckDuration = 0
+
+    while DoesEntityExist(ped) do
+      local currentPos = GetEntityCoords(ped)
+      local dist = #(currentPos - vector3(x, y, z))
+
+      -- Success
+      if dist <= distThreshold then
+        if onArrive then onArrive() end
+        break
+      end
+
+      -- Timeout
+      if (GetGameTimer() - walkStart) > timeout then
+        break
+      end
+
+      -- Stuck Check
+      if #(currentPos - lastPos) < 0.2 then
+        stuckDuration = stuckDuration + 500
+        if stuckDuration >= 3000 then -- 3s Stuck
+          ClearPedTasks(ped)
+          Wait(100)
+          TaskGoToCoordAnyMeans(ped, x, y, z, 1.0, 0, false, 786603, 0xbf800000)
+          stuckDuration = 0
+          walkStart = GetGameTimer() -- Reset timeout
+        end
+      else
+        stuckDuration = 0
+        lastPos = currentPos
+      end
+
+      Wait(500)
+    end
+  end)
+end
+
 ---Handle customer status changes via statebag
 ---@param ped number The ped entity
 ---@param customerData table Customer data from statebag
@@ -17,29 +66,14 @@ local function handleCustomerStatus(ped, customerData)
   local status = customerData.status
   local seatCoords = customerData.seatCoords
 
-
-
   if status == 'walking_in' then
-    -- Walk to seat
-    TaskGoToCoordAnyMeans(ped, seatCoords.x, seatCoords.y, seatCoords.z, 1.0, 0, false, 786603, 0xbf800000)
-
-    -- Monitor arrival
-    CreateThread(function()
-      local walkStart = GetGameTimer()
-      while DoesEntityExist(ped) do
-        local dist = #(GetEntityCoords(ped) - vector3(seatCoords.x, seatCoords.y, seatCoords.z))
-        if dist <= 1.7 then
-          -- Arrived at seat, notify server
-          TriggerServerEvent('waiter:server:customerArrived', customerData.id)
-          break
-        end
-        if (GetGameTimer() - walkStart) > sharedConfig.WalkTimeout then
-          -- Timeout, let server handle cleanup
-          break
-        end
-        Wait(500)
+    -- Walk to seat using smart helper
+    SmartWalkTo(ped, seatCoords.x, seatCoords.y, seatCoords.z, {
+      threshold = 1.7,
+      onArrive = function()
+        TriggerServerEvent('waiter:server:customerArrived', customerData.id)
       end
-    end)
+    })
   elseif status == 'sitting' then
     -- Sit down
     ClearPedTasks(ped)
@@ -55,59 +89,40 @@ local function handleCustomerStatus(ped, customerData)
     end
   elseif status == 'eating' then
     -- Play eating animation
-    PlayAnimUpper(ped, clientConfig.Anims.Eat.dict, clientConfig.Anims.Eat.anim, true)
-  elseif status == 'leaving_angry' then
-    -- Angry animation
-    if IsWaiter() then
-      lib.notify({ type = 'warning', description = 'Customer left angry!' })
+    local anim = Utils.GetRandom(clientConfig.Anims.Eat)
+    if anim then
+      Utils.PlayAnimUpper(ped, anim.dict, anim.anim, true)
     end
-    PlayAnimUpper(ped, clientConfig.Anims.Anger.dict, clientConfig.Anims.Anger.anim)
-    Wait(1500)
-    -- Walk to exit and fade out when close
-    ClearPedTasksImmediately(ped)
-    TaskGoToCoordAnyMeans(ped, clientConfig.ExitCoords.x, clientConfig.ExitCoords.y, clientConfig.ExitCoords.z, 1.0, 0,
-      false, 786603,
-      0xbf800000)
-
-    CreateThread(function()
-      while DoesEntityExist(ped) do
-        local dist = #(GetEntityCoords(ped) - vector3(clientConfig.ExitCoords.x, clientConfig.ExitCoords.y, clientConfig.ExitCoords.z))
-        if dist <= 2.0 then
-          -- Reached exit, fade out
-          for i = 255, 0, -50 do
-            SetEntityAlpha(ped, i, false)
-            Wait(sharedConfig.FadeoutDuration / 6) -- Divide by 6 steps (255/50)
-          end
-          -- Notify server to delete
-          TriggerServerEvent('waiter:server:customerExited', customerData.id)
-          break
-        end
-        Wait(500)
+  elseif status == 'leaving_angry' or status == 'leaving_happy' then
+    -- Handle specific angry behavior
+    if status == 'leaving_angry' then
+      if IsWaiter() then
+        lib.notify({ type = 'warning', description = 'Customer left angry!' })
       end
-    end)
-  elseif status == 'leaving_happy' then
-    -- Walk to exit and fade out when close
-    ClearPedTasksImmediately(ped)
-    TaskGoToCoordAnyMeans(ped, clientConfig.ExitCoords.x, clientConfig.ExitCoords.y, clientConfig.ExitCoords.z, 1.0, 0,
-      false, 786603,
-      0xbf800000)
-
-    CreateThread(function()
-      while DoesEntityExist(ped) do
-        local dist = #(GetEntityCoords(ped) - vector3(clientConfig.ExitCoords.x, clientConfig.ExitCoords.y, clientConfig.ExitCoords.z))
-        if dist <= 2.0 then
-          -- Reached exit, fade out
-          for i = 255, 0, -50 do
-            SetEntityAlpha(ped, i, false)
-            Wait(sharedConfig.FadeoutDuration / 6)
-          end
-          -- Notify server to delete
-          TriggerServerEvent('waiter:server:customerExited', customerData.id)
-          break
-        end
-        Wait(500)
+      local anim = Utils.GetRandom(clientConfig.Anims.Anger)
+      if anim then
+        Utils.PlayAnimUpper(ped, anim.dict, anim.anim)
       end
-    end)
+      Wait(1500)
+    end
+
+    -- Shared exit logic
+    ClearPedTasksImmediately(ped)
+
+    local exit = Utils.GetRandom(sharedConfig.Exits)
+    if not exit then return end
+
+    SmartWalkTo(ped, exit.x, exit.y, exit.z, {
+      threshold = 2.0,
+      onArrive = function()
+        -- Reached exit, fade out
+        for i = 255, 0, -50 do
+          SetEntityAlpha(ped, i, false)
+          Wait(sharedConfig.FadeoutDuration / 6)
+        end
+        TriggerServerEvent('waiter:server:customerExited', customerData.id)
+      end
+    })
   end
 end
 
@@ -251,7 +266,10 @@ CreateThread(function()
         local customerData = Entity(data.ped).state.waiterCustomer
         if customerData and customerData.status == 'waiting_order' then
           if data.nextWaveTime and GetGameTimer() >= data.nextWaveTime then
-            PlayAnimUpper(data.ped, clientConfig.Anims.Wave.dict, clientConfig.Anims.Wave.anim)
+            local anim = Utils.GetRandom(clientConfig.Anims.Wave)
+            if anim then
+              Utils.PlayAnimUpper(data.ped, anim.dict, anim.anim)
+            end
             data.nextWaveTime = GetGameTimer() + math.random(sharedConfig.WaveIntervalMin, sharedConfig.WaveIntervalMax)
           end
         end

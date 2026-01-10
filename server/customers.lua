@@ -28,8 +28,8 @@ end
 local function SpawnCustomer()
   -- Check if any players are nearby
   local playersNearby = false
-  local restaurantCenter = vector3(sharedConfig.EntranceCoords.x, sharedConfig.EntranceCoords.y,
-    sharedConfig.EntranceCoords.z)
+  local restaurantCenter = vector3(sharedConfig.RestaurantCenter.x, sharedConfig.RestaurantCenter.y,
+    sharedConfig.RestaurantCenter.z)
 
   for _, playerId in ipairs(GetPlayers()) do
     local playerPed = GetPlayerPed(playerId)
@@ -71,9 +71,12 @@ local function SpawnCustomer()
     return
   end
 
-  local seat = availableSeats[math.random(1, #availableSeats)]
-  local model = sharedConfig.Models[math.random(1, #sharedConfig.Models)]
-  local entrance = sharedConfig.EntranceCoords
+  local seat = Utils.GetRandom(availableSeats)
+  local model = Utils.GetRandom(sharedConfig.Models)
+  -- Pick random entrance
+  local entrance = Utils.GetRandom(sharedConfig.Entrances)
+
+  if not seat or not model or not entrance then return end
 
   -- Spawn ped on server
   local ped = CreatePed(4, joaat(model), entrance.x, entrance.y, entrance.z, entrance.w, true, true)
