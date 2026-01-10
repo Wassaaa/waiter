@@ -32,7 +32,10 @@ function CleanupScene()
   TriggerServerEvent('waiter:server:modifyTray', 'clear')
 
   -- Remove ox_target options from kitchen props
-  RemoveKitchenTargets()
+  if RemoveKitchenTargets then RemoveKitchenTargets() end
+
+  -- Restore world props
+  if ManageModelHides then ManageModelHides(false) end
 
   -- Reset Logic
   State.restaurantLoaded = false

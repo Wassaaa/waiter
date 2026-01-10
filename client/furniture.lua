@@ -98,58 +98,23 @@ function RemoveKitchenTargets()
   kitchenTargetsRegistered = {}
 end
 
-function DeleteWorldProps()
-  local centerCoord = vector3(sharedConfig.EntranceCoords.x, sharedConfig.EntranceCoords.y, sharedConfig.EntranceCoords
-    .z)
-  local deletedCount = 0
+-- Manage world prop hiding (persistent engine-level hiding)
+function ManageModelHides(enable)
+  local center = vector3(sharedConfig.EntranceCoords.x, sharedConfig.EntranceCoords.y, sharedConfig.EntranceCoords.z)
+  local radius = sharedConfig.ProximityRadius
 
-  -- Get ALL objects in the world
-  local allObjects = GetGamePool('CObject')
-
-  for _, obj in ipairs(allObjects) do
-    local model = GetEntityModel(obj)
-    local coords = GetEntityCoords(obj)
-    local dist = #(coords - centerCoord)
-
-    -- Check if this object is one of our target hashes and within radius
-    local isTargetHash = false
-    for _, hash in ipairs(sharedConfig.PropsToDelete) do
-      if model == hash then
-        isTargetHash = true
-        break
-      end
-    end
-
-    if isTargetHash and dist <= sharedConfig.ProximityRadius then
-      -- Check if this is one of OUR spawned entities by network ID
-      local isOurFurniture = false
-
-      -- Only check network ID if entity is networked (world props aren't)
-      if NetworkGetEntityIsNetworked(obj) then
-        local objNetId = NetworkGetNetworkIdFromEntity(obj)
-
-        -- Check against furniture in GlobalState
-        if GlobalState.waiterFurniture then
-          for _, item in ipairs(GlobalState.waiterFurniture) do
-            if item.netid == objNetId then
-              isOurFurniture = true
-              break
-            end
-          end
-        end
-      end
-
-      if not isOurFurniture then
-        SetEntityAsMissionEntity(obj, true, true)
-        DeleteObject(obj)
-        DeleteEntity(obj)
-        deletedCount = deletedCount + 1
-      end
+  for _, hash in ipairs(sharedConfig.PropsToDelete) do
+    if enable then
+      CreateModelHideExcludingScriptObjects(center.x, center.y, center.z, radius, hash, true)
+    else
+      RemoveModelHide(center.x, center.y, center.z, radius, hash, false)
     end
   end
 
-  if deletedCount > 0 then
-    lib.print.info(('Cleaned up %d world props'):format(deletedCount))
+  if enable then
+    lib.print.info('World props hidden via engine')
+  else
+    lib.print.info('World props restored')
   end
 end
 
@@ -170,8 +135,20 @@ function LoadFurnitureData()
     return
   end
 
-  -- Clean up world props now that we know what's ours
-  DeleteWorldProps()
+  ManageModelHides(true)
+
+  -- Force ground items (client-side physics adjustment)
+  for _, item in ipairs(furniture) do
+    if NetworkDoesNetworkIdExist(item.netid) then
+      local entity = NetworkGetEntityFromNetworkId(item.netid)
+      if DoesEntityExist(entity) then
+        FreezeEntityPosition(entity, false)
+        PlaceObjectOnGroundProperly(entity)
+        SetEntityRotation(entity, 0.0, 0.0, item.coords.w, 2, true)
+        FreezeEntityPosition(entity, true)
+      end
+    end
+  end
 
   State.restaurantLoaded = true
   lib.print.info('Furniture loaded!')
@@ -209,7 +186,6 @@ function StartProximityManagement()
       -- Player entered proximity
       if isInProximity and not wasInProximity then
         lib.print.info('Player entered restaurant area')
-        DeleteWorldProps() -- Initial cleanup on entry
         UpdateFurnitureCollision()
       end
 
@@ -222,7 +198,6 @@ function StartProximityManagement()
 
       -- Periodic cleanup while in proximity (world props can respawn)
       if isInProximity then
-        DeleteWorldProps()
         UpdateFurnitureCollision()
       end
 
@@ -244,6 +219,7 @@ AddStateBagChangeHandler('waiterFurniture', 'global', function(_, _, value)
   else
     lib.print.info('GlobalState.waiterFurniture cleared, cleaning up')
     CleanupScene()
+    ManageModelHides(false)
   end
 end)
 
