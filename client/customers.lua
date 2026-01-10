@@ -183,6 +183,7 @@ AddStateBagChangeHandler('waiterCustomer', nil, function(bagName, _, value, _, r
   local netid = tonumber(netidStr)
   if not netid then return end
 
+  if not NetworkDoesNetworkIdExist(netid) then return end
   local ped = NetworkGetEntityFromNetworkId(netid)
   if not DoesEntityExist(ped) then return end
 

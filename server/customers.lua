@@ -1,6 +1,8 @@
 -- Customer Management - Server Side
 local sharedConfig = require 'config.shared'
 
+ServerCustomers = {}
+
 -- Track active customers
 local customers = {}
 
@@ -65,7 +67,7 @@ local function SpawnCustomer()
   end
 
   if #availableSeats == 0 then
-    lib.print.info('No available seats for customer')
+    -- lib.print.info('No available seats for customer') -- Too spammy
     return
   end
 
@@ -225,20 +227,21 @@ RegisterNetEvent('waiter:server:updateCustomerOrder', function(customerId, newOr
   end
 end)
 
--- Callback to start spawning customers
-lib.callback.register('waiter:server:startCustomerSpawning', function(source)
+---Start the customer spawning loop
+function ServerCustomers.StartSpawning()
   CreateThread(function()
     Wait(2000)
-    while GlobalState.waiterFurniture do
+    -- Loop while restaurant is open and furniture is loaded
+    while GlobalState.isRestaurantOpen and GlobalState.waiterFurniture do
       SpawnCustomer()
       Wait(sharedConfig.SpawnInterval)
     end
+    lib.print.info('Customer spawning loop stopped')
   end)
-  return true
-end)
+end
 
--- Cleanup
-RegisterNetEvent('waiter:server:cleanupCustomers', function()
+---Cleanup all customers
+function ServerCustomers.Cleanup()
   for _, customer in pairs(customers) do
     local ped = NetworkGetEntityFromNetworkId(customer.netid)
     if DoesEntityExist(ped) then
@@ -247,15 +250,10 @@ RegisterNetEvent('waiter:server:cleanupCustomers', function()
   end
   customers = {}
   lib.print.info('All customers cleaned up')
-end)
+end
 
 -- Cleanup on resource stop
 AddEventHandler('onResourceStop', function(resourceName)
   if GetCurrentResourceName() ~= resourceName then return end
-  for _, customer in pairs(customers) do
-    local ped = NetworkGetEntityFromNetworkId(customer.netid)
-    if DoesEntityExist(ped) then
-      DeleteEntity(ped)
-    end
-  end
+  ServerCustomers.Cleanup()
 end)

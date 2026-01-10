@@ -26,13 +26,6 @@ function CleanupScene()
   -- Clear player's tray via server
   TriggerServerEvent('waiter:server:modifyTray', 'clear')
 
-  -- Request server to cleanup furniture and customers
-  -- Server handles ped deletion, which auto-replicates to clients
-  if State.isRestaurantOpen then
-    TriggerServerEvent('waiter:server:cleanup')
-    TriggerServerEvent('waiter:server:cleanupCustomers')
-  end
-
   -- Remove ox_target options from kitchen props
   if RemoveKitchenTargets then
     RemoveKitchenTargets()

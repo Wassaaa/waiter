@@ -1,6 +1,8 @@
 -- Furniture Spawning and Management
 local sharedConfig = require 'config.shared'
 
+ServerFurniture = {}
+
 ---Spawn a single prop entity with proper setup
 ---@param item table Config item with hash, coords, type
 ---@return number|nil entity The spawned entity handle
@@ -44,8 +46,8 @@ local function BuildFurnitureEntry(item, netid)
   return entry
 end
 
--- Cleanup furniture and reset GlobalState
-local function CleanupFurniture()
+---Cleanup furniture and reset GlobalState
+function ServerFurniture.Cleanup()
   if GlobalState.waiterFurniture then
     for _, item in ipairs(GlobalState.waiterFurniture) do
       local entity = NetworkGetEntityFromNetworkId(item.netid)
@@ -56,15 +58,16 @@ local function CleanupFurniture()
   end
 
   GlobalState.waiterFurniture = nil
+  lib.print.info('Furniture cleaned up')
 end
 
--- Setup Restaurant
----@param source number Player who triggered setup
-lib.callback.register('waiter:server:setupRestaurant', function(source)
+---Setup Restaurant Furniture
+---@return boolean success
+function ServerFurniture.Setup()
   -- Clean up any existing furniture first
   if GlobalState.waiterFurniture then
     lib.print.info('Cleaning up existing furniture before spawning new')
-    CleanupFurniture()
+    ServerFurniture.Cleanup()
     Wait(500)
   end
 
@@ -89,16 +92,10 @@ lib.callback.register('waiter:server:setupRestaurant', function(source)
   ))
 
   return #furniture > 0
-end)
-
--- Cleanup Restaurant
-RegisterNetEvent('waiter:server:cleanup', function()
-  lib.print.info('Cleaning up restaurant server-side')
-  CleanupFurniture()
-end)
+end
 
 -- Cleanup on resource stop
 AddEventHandler('onResourceStop', function(resourceName)
   if GetCurrentResourceName() ~= resourceName then return end
-  CleanupFurniture()
+  ServerFurniture.Cleanup()
 end)

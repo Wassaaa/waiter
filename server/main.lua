@@ -28,7 +28,35 @@ local function canPlayerWork(source)
   return true
 end
 
--- Events
+---Toggle restaurant state
+---@param source number Source of the player toggling it
+RegisterNetEvent('waiter:server:toggleRestaurant', function()
+  local src = source
+  local canWork, reason = canPlayerWork(src)
+  if not canWork then
+    return exports.qbx_core:Notify(src, reason, 'error')
+  end
+
+  if GlobalState.isRestaurantOpen then
+    -- Close it
+    GlobalState.isRestaurantOpen = false
+    ServerCustomers.Cleanup()
+    ServerFurniture.Cleanup()
+    exports.qbx_core:Notify(src, 'Restaurant closed', 'success')
+  else
+    -- Open it
+    GlobalState.isRestaurantOpen = true
+    local success = ServerFurniture.Setup()
+    if success then
+      ServerCustomers.StartSpawning()
+      exports.qbx_core:Notify(src, 'Restaurant opened', 'success')
+    else
+      exports.qbx_core:Notify(src, 'Failed to open restaurant', 'error')
+      GlobalState.isRestaurantOpen = false
+    end
+  end
+end)
+
 ---@param itemsDelivered number Number of items delivered to customer
 RegisterNetEvent('waiter:pay', function(itemsDelivered)
   local src = source --[[@as number]]

@@ -149,37 +149,7 @@ function DeleteWorldProps()
   end
 end
 
-function SetupRestaurant()
-  local alreadySetup = GlobalState.waiterFurniture ~= nil
-
-  -- Request server to spawn if not already setup
-  if not alreadySetup then
-    CleanupScene()
-    lib.print.info('Requesting server to spawn furniture')
-
-    local success = lib.callback.await('waiter:server:setupRestaurant', false)
-    if not success then
-      lib.notify({ type = 'error', description = 'Failed to setup restaurant' })
-      return
-    end
-
-    -- Start customer spawning (only needed once)
-    lib.callback.await('waiter:server:startCustomerSpawning', false)
-  else
-    lib.print.info('Restaurant already running, loading furniture data')
-  end
-
-  -- Load furniture data
-  LoadFurnitureData()
-
-  -- Register ox_target for kitchen props (model-based, works regardless of streaming)
-  SetupKitchenTargets()
-
-  -- Start proximity management thread
-  StartProximityManagement()
-end
-
--- Load furniture entities and populate seat tracking (called from various places)
+-- Load furniture entities and populate seat tracking
 function LoadFurnitureData()
   if State.isRestaurantOpen then
     lib.print.info('Furniture already loaded')
@@ -201,9 +171,11 @@ function LoadFurnitureData()
   for _, item in ipairs(furniture) do
     -- Wait for entity to stream in
     local obj = lib.waitFor(function()
-      local entity = NetworkGetEntityFromNetworkId(item.netid)
-      if DoesEntityExist(entity) then
-        return entity
+      if NetworkDoesNetworkIdExist(item.netid) then
+        local entity = NetworkGetEntityFromNetworkId(item.netid)
+        if DoesEntityExist(entity) then
+          return entity
+        end
       end
     end, ('Furniture %s failed to stream in'):format(item.type), 10000)
 
@@ -225,7 +197,7 @@ function LoadFurnitureData()
   lib.print.info(('Furniture loaded! Seats: %d'):format(#State.validSeats))
 end
 
--- Proximity management thread - handles cleanup and exit detection
+-- Proximity management thread
 function StartProximityManagement()
   if cleanupThreadActive then return end
   cleanupThreadActive = true
@@ -266,23 +238,22 @@ end
 -- Watch for GlobalState changes to handle late-joining players or remote setup
 AddStateBagChangeHandler('waiterFurniture', 'global', function(_, _, value)
   if value then
-    lib.print.info('GlobalState.waiterFurniture changed, setting up kitchen targets')
+    lib.print.info('GlobalState.waiterFurniture changed, loading furniture')
+    LoadFurnitureData()
     SetupKitchenTargets()
   else
-    lib.print.info('GlobalState.waiterFurniture cleared, removing kitchen targets')
-    RemoveKitchenTargets()
+    lib.print.info('GlobalState.waiterFurniture cleared, cleaning up')
+    CleanupScene()
   end
 end)
-
-
 
 -- Initialize on resource start
 CreateThread(function()
   Wait(1000) -- Let ox_lib and other resources initialize
 
-  -- Check if restaurant is already running (e.g., player joined mid-session or resource restart)
+  -- Check if restaurant is already running
   if GlobalState.waiterFurniture then
-    lib.print.info('Restaurant already running on resource start, auto-loading')
+    lib.print.info('Restaurant running on start, loading furniture')
     LoadFurnitureData()
     SetupKitchenTargets()
     StartProximityManagement()

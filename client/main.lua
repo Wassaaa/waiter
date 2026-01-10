@@ -2,26 +2,45 @@
 local clientConfig = require 'config.client'
 local sharedConfig = require 'config.shared'
 
--- Commands
-RegisterCommand('setuprest', function()
-  -- Optional: Check if player can work before setting up
-  if sharedConfig.JobName then
-    lib.callback('waiter:canWork', false, function(canWork, reason)
-      if canWork then
-        SetupRestaurant()
-      else
-        lib.notify({ type = 'error', description = reason })
-      end
-    end)
-  else
-    SetupRestaurant()
-  end
-end, false)
+---Setup the OX Target management zone for the restaurant
+local function SetupManagementZone()
+  local mgmt = sharedConfig.Management
+  if not mgmt then return end
 
-RegisterCommand('closerest', function()
-  CleanupScene()
-  lib.notify({ type = 'info', description = 'Restaurant Closed' })
-end, false)
+  exports.ox_target:addSphereZone({
+    coords = mgmt.coords,
+    radius = mgmt.radius,
+    debug = false,
+    options = {
+      {
+        name = 'waiter_open',
+        icon = mgmt.target.open.icon,
+        label = mgmt.target.open.label,
+        canInteract = function()
+          return not GlobalState.isRestaurantOpen
+        end,
+        onSelect = function()
+          TriggerServerEvent('waiter:server:toggleRestaurant')
+        end
+      },
+      {
+        name = 'waiter_close',
+        icon = mgmt.target.close.icon,
+        label = mgmt.target.close.label,
+        canInteract = function()
+          return GlobalState.isRestaurantOpen
+        end,
+        onSelect = function()
+          TriggerServerEvent('waiter:server:toggleRestaurant')
+        end
+      }
+    }
+  })
+  lib.print.info('Management zone setup at ' .. tostring(mgmt.coords))
+end
+
+-- Initialize
+SetupManagementZone()
 
 -- Tray Adjustment (Debug)
 RegisterCommand('tunetray', function(source, args)
