@@ -22,24 +22,29 @@ return {
   -- Types: 'table', 'chair', 'kitchen'
   -- Kitchen props can have 'items' array to specify which menu items can be picked up from them
   Furniture       = {
-    -- Tables (type = 'table')
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1267.09, -881.66, 10.94, 121.61) },
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1265.67, -880.34, 10.94, 34.29) },
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1275.65, -884.78, 10.94, 35.15) },
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1277.42, -882.41, 10.94, 308.58) },
-    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1278.56, -880.88, 10.94, 36.02) },
 
-    -- Chairs (type = 'chair') - these become valid seats for customers
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1268.32, -882.15, 10.94, 115.4) },
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1267.62, -880.47, 10.94, 23.39) },
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1266.21, -879.23, 10.94, 28.24) },
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1264.71, -879.67, 10.94, 296.07) },
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1276.19, -883.99, 10.94, 29.11) },
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1274.89, -884.21, 10.93, 297.05) },
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1276.66, -881.84, 10.94, 302.23) },
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1276.78, -883.16, 10.94, 213.99) },
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1277.84, -880.27, 10.94, 300.19) },
-    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1279.11, -880.09, 10.93, 29.67) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1267.092, -881.2587, 10.935, 121.6102) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1265.48, -880.2396, 10.935, 34.2938) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1277.4573, -882.4235, 10.935, 310.2459) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1278.5657, -880.8902, 10.935, 35.6781) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1275.7944, -884.8367, 10.935, 38.4381) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1282.6851, -875.8983, 10.935, 308.4373) },
+    { type = 'table', hash = joaat('prop_table_01'),  coords = vector4(-1284.2375, -873.7656, 10.935, 35.3706) },
+
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1276.8093, -883.1454, 10.935, 210.3148) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1267.9293, -881.749, 10.935, 115.4048) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1276.6741, -881.6671, 10.935, 329.8016) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1282.0602, -876.6229, 10.935, 210.2656) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1264.7139, -879.6712, 10.935, 296.066) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1267.6223, -880.4663, 10.935, 23.3893) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1266.0082, -879.4261, 10.935, 28.2371) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1279.1121, -880.0884, 10.935, 29.667) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1283.3225, -875.1124, 10.935, 29.3791) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1276.2147, -883.976, 10.935, 29.8354) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1275.2023, -884.0359, 10.935, 309.1954) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1283.5686, -874.3913, 10.935, 214.1049) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1277.8182, -880.2822, 10.935, 301.0534) },
+    { type = 'chair', hash = joaat('prop_chair_01a'), coords = vector4(-1284.7731, -872.9631, 10.935, 29.6095) },
 
     -- Kitchen Props (type = 'kitchen') - each can serve different items/actions
     -- 'actions' references keys from the Items table below
