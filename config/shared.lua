@@ -55,21 +55,21 @@ return {
       price = 25,
       prop = 'prop_cs_burger_01',
       target = { icon = 'fa-solid fa-burger', label = 'Cook Burger' },
-      offset = { z = 0.02 },
+      offset = { x = 0.0003, y = 0.0012, z = 0.0235, rx = -3.2, ry = 1.7, rz = -0.1 },
     },
     drink = {
       label = 'Drink',
       price = 10,
       prop = 'prop_ecola_can',
       target = { icon = 'fa-solid fa-martini-glass', label = 'Pour Drink' },
-      offset = { z = 0.0 },
+      offset = { x = -0.0005, z = 0.0490, rx = -3.2, ry = 1.7, rz = -0.2 },
     },
     fries = {
       label = 'Fries',
       price = 15,
       prop = 'prop_food_chips',
       target = { icon = 'fa-solid fa-plus', label = 'Grab Fries' },
-      offset = { z = 0.03 },
+      offset = { x = 0.0004, y = 0.0007, z = -0.0156, rz = -0.2 },
     },
     clearTray = {
       target = { icon = 'fa-solid fa-trash', label = 'Clear Tray', action = 'clear' },
@@ -85,14 +85,15 @@ return {
     rotation = { x = 190.0, y = 300.0, z = 50.0 },
 
     -- Slot positions on the tray (relative to tray prop)
+    -- rx, ry, rz are optional rotation offsets (for edge items to look slanted)
     -- More slots can be unlocked based on skill in future
     slots = {
-      { x = 0.0,   y = 0.12,  z = 0.05 }, -- Slot 1: Center Front
-      { x = -0.12, y = -0.08, z = 0.05 }, -- Slot 2: Left Back
-      { x = 0.12,  y = -0.08, z = 0.05 }, -- Slot 3: Right Back
-      -- Future slots (unlockable):
-      -- { x = -0.12, y = 0.12, z = 0.05 },  -- Slot 4: Left Front
-      -- { x = 0.12,  y = 0.12, z = 0.05 },  -- Slot 5: Right Front
+      { x = 0.1775,  y = 0.0939,  z = 0.0167, rx = 3.2,  ry = -1.7 },
+      { x = -0.1600, y = -0.1121, z = 0.0190, rx = -6.0, rz = -1.2 },
+      { x = 0.1827,  y = -0.0816, z = 0.0183, rx = -0.1, ry = -0.3, rz = -4.5 },
+      { x = -0.1478, y = 0.1142,  z = 0.0221, rx = 12.6, ry = -2.8, rz = 75.2 },
+      { x = 0.0060,  y = 0.0592,  z = 0.0156 },
+      { x = 0.0027,  y = -0.0930, z = 0.0173, rz = -0.3 },
     },
 
     -- Default item offset (used if item.offset is missing)
@@ -138,5 +139,5 @@ return {
   RequireOnDuty   = false, -- Require player to be on duty to work
 
   -- Gameplay Limits
-  MaxHandItems    = 3, -- Max items on tray at once
+  MaxHandItems    = 6, -- Max items on tray at once
 }
