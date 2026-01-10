@@ -97,8 +97,8 @@ AddEventHandler('onResourceStop', function(resourceName)
 end)
 
 local knownModels = {
-  [joaat('prop_chair_01a')] = 'prop_table_01',
-  [joaat('prop_chair_02')] = 'prop_chair_01a',
+  [joaat('prop_chair_01a')] = 'prop_chair_01a',
+  [joaat('prop_table_01')] = 'prop_table_01',
 }
 
 RegisterCommand('stealscene', function(source, args)
