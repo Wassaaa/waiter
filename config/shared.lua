@@ -179,7 +179,7 @@ return {
   RequireOnDuty    = false,    -- Require player to be on duty to work
 
   -- Gameplay Limits
-  MaxHandItems     = 6, -- Max items on tray at once
-  OrderSizeMin     = 1, -- Min items per customer order
-  OrderSizeMax     = 3, -- Max items per customer order
+  MaxHandItems     = 12, -- Max items on tray at once
+  OrderSizeMin     = 1,  -- Min items per customer order
+  OrderSizeMax     = 3,  -- Max items per customer order
 }

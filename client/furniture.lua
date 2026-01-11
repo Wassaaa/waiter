@@ -48,34 +48,10 @@ function SetupKitchenTargets()
     local hasFood = false
 
     -- Process utility actions explicitly
-    for _, actionKey in ipairs(kitchen.actions or {}) do
-      local actionData = sharedConfig.Actions[actionKey]
-      if actionData then
-        if actionData.type == 'food' then
-          hasFood = true
-        else
-          -- Utility targets (clear tray, etc)
-          local target = actionData.target or {}
-          local action = target.action or defaults.action
-
-          table.insert(options, {
-            name = 'waiter_' .. actionKey,
-            icon = target.icon or defaults.icon,
-            label = target.label or defaults.label:format(actionData.label or actionKey),
-            distance = target.distance or defaults.distance,
-            canInteract = function(entity)
-              if not IsWaiter() then return false end
-              local k = GetKitchenByEntity(entity)
-              if not k or not k.actions then return false end
-              for _, a in ipairs(k.actions) do
-                if a == actionKey then return true end
-              end
-              return false
-            end,
-            onSelect = function() ModifyHand(action, actionKey) end
-          })
-        end
-      end
+    -- Individual food interactions removed in favor of Tray Building Minigame
+    -- Allow tray assembly if kitchen has any actions (Simplification)
+    if kitchen.actions and #kitchen.actions > 0 then
+      hasFood = true
     end
 
     -- Add single 'Assemble Tray' option if any food is available
@@ -217,8 +193,6 @@ function StartProximityManagement()
       -- Player left proximity
       if not isInProximity and wasInProximity then
         lib.print.info('Player left restaurant area')
-        ModifyHand('clear')
-        lib.notify({ type = 'info', description = 'Tray cleared (Left Area)' })
       end
 
       -- Periodic cleanup while in proximity (world props can respawn)

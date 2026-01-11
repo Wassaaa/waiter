@@ -21,7 +21,6 @@ server_scripts {
 client_scripts {
   'client/state.lua',
   'client/main.lua',
-  'client/tray.lua',
   'client/tray_statebag.lua',
   'client/customers.lua',
   'client/furniture.lua',
@@ -34,6 +33,7 @@ files {
   'client/lib/controls.lua',
   'client/lib/raycast.lua',
   'client/lib/dragdrop.lua',
+  'client/lib/tray.lua',
 }
 
 dependencies {

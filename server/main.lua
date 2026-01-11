@@ -128,7 +128,29 @@ RegisterNetEvent('waiter:server:modifyTray', function(action, item)
     exports.qbx_core:Notify(src, 'Tray cleared', 'info')
   elseif action == 'set' then
     if type(item) == 'table' then
-      tray = item
+      -- Validate complex items
+      local validatedTray = {}
+      for _, data in ipairs(item) do
+        local key = data.key
+        if key and config.Actions[key] then
+          -- Sanitize: Keep only necessary data to prevent state bloat/injection
+          table.insert(validatedTray, {
+            key = key,
+            x = tonumber(data.x),
+            y = tonumber(data.y),
+            z = tonumber(data.z),
+            rx = tonumber(data.rx),
+            ry = tonumber(data.ry),
+            rz = tonumber(data.rz)
+          })
+        end
+      end
+
+      if #validatedTray > config.MaxHandItems then
+        return exports.qbx_core:Notify(src, 'Too many items!', 'error')
+      end
+
+      tray = validatedTray
       exports.qbx_core:Notify(src, 'Tray assembled', 'success')
     end
   end

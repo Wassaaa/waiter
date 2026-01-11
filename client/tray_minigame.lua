@@ -1,9 +1,10 @@
 local clientConfig = require 'config.client'
 local sharedConfig = require 'config.shared'
 local DragDrop = require 'client.lib.dragdrop'
+local Tray = require 'client.lib.tray'
 
 local currentSession = nil
-local trayProp = nil
+local currentTray = nil
 
 -- Helper to calculate offset coordinate based on heading
 local function getOffset(center, heading, dx, dy)
@@ -27,42 +28,64 @@ function StartTrayBuilding()
     local zHeight = coords.z
 
     -- Spawn the Tray Prop
-    local trayHash = joaat(sharedConfig.Tray.prop)
-    lib.requestModel(trayHash)
-    trayProp = CreateObject(trayHash, coords.x, coords.y, zHeight, false, false, false)
-    FreezeEntityPosition(trayProp, true)
     local trayHeading = GetEntityHeading(ped)
-    SetEntityHeading(trayProp, trayHeading)
+    currentTray = Tray.New(sharedConfig.Tray.prop, coords, trayHeading)
+
+    -- Adjust Z to sit on top of tray surface (Approx 5cm thickness)
+    zHeight = zHeight + 0.05
 
     -- Define callbacks
-    local function cleanupTray()
-        if DoesEntityExist(trayProp) then DeleteEntity(trayProp) end
-        trayProp = nil
-        currentSession = nil
+    local function cleanupTray(preserveItems)
+        if currentSession then
+            currentSession:Stop(preserveItems)
+            currentSession = nil
+        end
+
+        -- Delete tray ONLY if it's not attached to the player (Cancelled/Failed)
+        -- If preserved, we assume tray is carried.
+        if currentTray and DoesEntityExist(currentTray.entity) and not IsEntityAttached(currentTray.entity) then
+            DeleteEntity(currentTray.entity)
+        end
+
+        currentTray = nil
         lib.hideTextUI()
     end
 
     local function onFinish(itemKeys, items)
-        -- Validate items are actually on the tray
-        local finalItems = {}
-        local trayPos = GetEntityCoords(trayProp)
-        local TRAY_RADIUS = 0.25
+        if currentTray and DoesEntityExist(currentTray.entity) then
+            local trayData = {}
+            local trayEntity = currentTray.entity
+            local trayRot = GetEntityRotation(trayEntity, 2)
 
-        for _, item in ipairs(items) do
-            if DoesEntityExist(item.entity) then
-                local dist = #(GetEntityCoords(item.entity) - trayPos)
-                if dist < TRAY_RADIUS then
-                    table.insert(finalItems, item.key)
+            for _, item in ipairs(items) do
+                if DoesEntityExist(item.entity) then
+                    local itemPos = GetEntityCoords(item.entity)
+                    local itemRot = GetEntityRotation(item.entity, 2)
+
+                    -- Calculate Relative Offset and Rotation
+                    local offset = GetOffsetFromEntityGivenWorldCoords(trayEntity, itemPos.x, itemPos.y, itemPos.z)
+                    local relRot = itemRot - trayRot
+
+                    table.insert(trayData, {
+                        key = item.key,
+                        x = offset.x,
+                        y = offset.y,
+                        z = offset.z,
+                        rx = relRot.x,
+                        ry = relRot.y,
+                        rz = relRot.z
+                    })
                 end
             end
-        end
 
-        TriggerServerEvent('waiter:server:modifyTray', 'set', finalItems)
-        cleanupTray()
+            -- Sync to Server (which updates Statebag -> updates Visuals for all)
+            TriggerServerEvent('waiter:server:modifyTray', 'set', trayData)
+        end
+        cleanupTray(false) -- Destroy local instances, wait for Statebag
     end
 
     local function onCancel()
-        cleanupTray()
+        cleanupTray(false)
     end
 
     -- Create Session
@@ -108,8 +131,8 @@ AddEventHandler('onResourceStop', function(resource)
         if currentSession then
             currentSession:Stop()
         end
-        if trayProp and DoesEntityExist(trayProp) then
-            DeleteEntity(trayProp)
+        if currentTray and DoesEntityExist(currentTray.entity) then
+            DeleteEntity(currentTray.entity)
         end
         lib.hideTextUI()
     end

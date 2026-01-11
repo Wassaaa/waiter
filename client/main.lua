@@ -73,29 +73,6 @@ end)
 -- Initialize
 SetupManagementZone()
 
--- Tray Adjustment (Debug)
-RegisterCommand('tunetray', function(source, args)
-  if not State.trayProp or not DoesEntityExist(State.trayProp) then return end
-
-  local x = tonumber(args[1]) or 0.1
-  local y = tonumber(args[2]) or 0.05
-  local z = tonumber(args[3]) or -0.1
-  local rx = tonumber(args[4]) or 180.0
-  local ry = tonumber(args[5]) or 180.0
-  local rz = tonumber(args[6]) or 0.0
-
-  AttachEntityToEntity(State.trayProp, PlayerPedId(), GetPedBoneIndex(PlayerPedId(), 57005), x, y, z, rx, ry, rz, true,
-    true, false, true, 1, true)
-  lib.print.info(('Tray adjusted: %.2f %.2f %.2f | %.2f %.2f %.2f'):format(x, y, z, rx, ry, rz))
-end, false)
-
--- Resource Cleanup
-AddEventHandler('onResourceStop', function(resourceName)
-  if GetCurrentResourceName() ~= resourceName then return end
-  CleanupScene()
-  ModifyHand('clear')
-end)
-
 local knownModels = {
   [joaat('prop_chair_01a')] = 'prop_chair_01a',
   [joaat('prop_table_01')] = 'prop_table_01',

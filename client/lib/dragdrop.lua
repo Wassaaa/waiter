@@ -143,6 +143,7 @@ function Session:AddDispenser(model, key, coords, physicsProxyModel)
         entity = nil,
         lastPickupTime = 0
     }
+    lib.print.info('DEBUG: Adding Dispenser', key, coords)
     self:RespawnDispenser(d)
     table.insert(self.dispensers, d)
 end
@@ -226,6 +227,7 @@ function Session:AddItem(entity, key, visualEntity)
         key = key,
         isDispenser = false
     })
+    lib.print.info('DEBUG: Added Item', key, entity)
 end
 
 ---Internal: Spawn helper for proxy
@@ -593,7 +595,8 @@ function Session:Start()
 end
 
 ---Stop session and cleanup
-function Session:Stop()
+---@param preserveItems boolean? If true, items are not deleted (ownership transferred)
+function Session:Stop(preserveItems)
     self.active = false
 
     RenderScriptCams(false, true, 1000, true, true)
@@ -605,10 +608,12 @@ function Session:Stop()
     end
 
     -- Cleanup Items (Caller responsibility? No, session usually owns them unless transferred)
-    -- For now, we delete them. The caller 'onFinish' should have read what it needed.
-    for _, item in ipairs(self.items) do
-        if DoesEntityExist(item.entity) then DeleteEntity(item.entity) end
-        if item.visualEntity and DoesEntityExist(item.visualEntity) then DeleteEntity(item.visualEntity) end
+    -- For now, we delete them unless preserved (transferred to tray)
+    if not preserveItems then
+        for _, item in ipairs(self.items) do
+            if DoesEntityExist(item.entity) then DeleteEntity(item.entity) end
+            if item.visualEntity and DoesEntityExist(item.visualEntity) then DeleteEntity(item.visualEntity) end
+        end
     end
 
     self.dispensers = {}

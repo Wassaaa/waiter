@@ -1,119 +1,141 @@
--- Tray Statebag Handler - Watches for tray changes on ALL players and renders props locally
-local clientConfig = require 'config.client'
+local DragDrop = require 'client.lib.dragdrop'
+local Tray = require 'client.lib.tray'
 local sharedConfig = require 'config.shared'
+local clientConfig = require 'config.client'
 
 -- Store tray props for each player {[serverId] = {tray = entity, items = {entities}}}
 local playerTrays = {}
 
----Clean up tray props for a player (optionally clear animation)
----@param playerId number Server ID of player
----@param clearAnim boolean? Whether to also clear the animation (default: true)
+---Clean up tray props for a player
 local function cleanupPlayerTray(playerId, clearAnim)
   if clearAnim == nil then clearAnim = true end
 
-  if not playerTrays[playerId] then
-    -- No tracked props, but might still need to clear animation
-    if clearAnim then
-      local ped = GetPlayerPed(GetPlayerFromServerId(playerId))
-      if DoesEntityExist(ped) then
-        ClearPedTasks(ped)
-      end
+  local data = playerTrays[playerId]
+  if data then
+    if DoesEntityExist(data.tray) then DeleteEntity(data.tray) end
+    for _, prop in ipairs(data.items or {}) do
+      if DoesEntityExist(prop) then DeleteEntity(prop) end
     end
-    return
+    playerTrays[playerId] = nil
   end
 
-  local trayData = playerTrays[playerId]
-  if trayData.tray and DoesEntityExist(trayData.tray) then
-    DeleteEntity(trayData.tray)
-  end
-
-  for _, prop in ipairs(trayData.items or {}) do
-    if DoesEntityExist(prop) then
-      DeleteEntity(prop)
-    end
-  end
-
-  -- Clear the tray animation only if requested
   if clearAnim then
     local ped = GetPlayerPed(GetPlayerFromServerId(playerId))
     if DoesEntityExist(ped) then
       ClearPedTasks(ped)
     end
   end
-
-  playerTrays[playerId] = nil
 end
 
----Update tray visuals for a player
----@param playerId number Server ID of player
----@param trayItems table Array of item names
-local function updatePlayerTray(playerId, trayItems)
-  local hasItems = trayItems and #trayItems > 0
+---Update tray visuals from Statebag
+local function updatePlayerTray(playerId, trayState)
+  lib.print.info('DEBUG: updatePlayerTray', playerId, 'State:', json.encode(trayState))
+  -- Cleanup previous
+  cleanupPlayerTray(playerId, trayState == nil or #trayState == 0)
 
-  -- Clean up old props, only clear animation if tray will be empty
-  cleanupPlayerTray(playerId, not hasItems)
+  if not trayState or #trayState == 0 then return end
 
-  -- If empty tray, nothing more to do
-  if not hasItems then return end
+  local playerIdx = GetPlayerFromServerId(playerId)
+  if playerIdx == -1 then
+    lib.print.info('DEBUG: Player not found (Out of scope)', playerId)
+    return
+  end
+  local ped = GetPlayerPed(playerIdx)
+  if not DoesEntityExist(ped) then
+    lib.print.error('DEBUG: Ped not found for player index by server id', playerId, playerIdx)
+    return
+  end
 
-  -- Get the player's ped
-  local ped = GetPlayerPed(GetPlayerFromServerId(playerId))
-  if not DoesEntityExist(ped) then return end
-
-  -- Play animation
+  -- Play Anim
   Utils.PlayAnimUpper(ped, clientConfig.Anims.Tray.dict, clientConfig.Anims.Tray.anim, true)
 
-  -- Spawn tray using helper
-  local trayProp = SpawnTrayProp(ped)
-  if not trayProp then return end
+  -- Spawn Visual Tray
+  local trayModel = joaat(sharedConfig.Tray.prop)
+  lib.requestModel(trayModel)
+  local trayEntity = CreateObject(trayModel, 0, 0, 0, false, false, false)
+  SetEntityCollision(trayEntity, false, false)
+  lib.print.info('DEBUG: Tray Entity Created', trayEntity, 'Model:', trayModel)
+
+  -- Attach to Player (using Shared Config)
+  local config = sharedConfig.Tray
+  local off = config.offset
+  local rot = config.rotation
+
+  AttachEntityToEntity(trayEntity, ped, GetPedBoneIndex(ped, config.bone),
+    off.x, off.y, off.z,
+    rot.x, rot.y, rot.z,
+    true, true, false, true, 1, true
+  )
 
   local itemProps = {}
-  local maxSlots = GetAvailableTraySlots()
 
-  for slotIndex, itemKey in ipairs(trayItems) do
-    if slotIndex > maxSlots then break end
+  -- Spawn Items
+  for _, itemData in ipairs(trayState) do
+    local key = itemData.key
+    local action = sharedConfig.Actions[key]
+    if action and action.prop then
+      local model = joaat(action.prop)
+      lib.requestModel(model)
+      local itemEntity = CreateObject(model, 0, 0, 0, false, false, false)
+      SetEntityCollision(itemEntity, false, false)
+      lib.print.info('DEBUG: Item Spawned', key, itemEntity)
 
-    local itemProp = SpawnItemOnTray(trayProp, slotIndex, itemKey)
-    if itemProp then
-      table.insert(itemProps, itemProp)
+      -- Attach using synced offsets
+      AttachEntityToEntity(itemEntity, trayEntity, 0,
+        itemData.x, itemData.y, itemData.z,
+        itemData.rx, itemData.ry, itemData.rz,
+        false, false, false, false, 0, true
+      )
+      table.insert(itemProps, itemEntity)
+    else
+      lib.print.error('DEBUG: Missing action or prop for key', key)
     end
   end
 
-  -- Store props
   playerTrays[playerId] = {
-    tray = trayProp,
+    tray = trayEntity,
     items = itemProps
   }
 
-  -- Monitor this specific tray for player existence
+  -- Watch for ped deletion & Enforce Animation
   CreateThread(function()
-    while playerTrays[playerId] and playerTrays[playerId].tray == trayProp do
+    local animDict = clientConfig.Anims.Tray.dict
+    local animName = clientConfig.Anims.Tray.anim
+
+    while playerTrays[playerId] and playerTrays[playerId].tray == trayEntity do
       if not DoesEntityExist(ped) then
         cleanupPlayerTray(playerId)
         break
       end
-      Wait(10000)
+
+      -- Enforce Animation if not playing (recover from collisions)
+      if not IsEntityPlayingAnim(ped, animDict, animName, 3) then
+        if not IsPedRagdoll(ped) and not IsPedFalling(ped) and not IsEntityDead(ped) then
+          Utils.PlayAnimUpper(ped, animDict, animName, true)
+        end
+      end
+
+      Wait(500)
     end
   end)
 end
 
--- Watch for tray changes on ALL players
-AddStateBagChangeHandler('waiterTray', "", function(bagName, _, value, _, replicated)
-  -- bagName format: "player:123"
-  local playerId = tonumber((bagName:gsub('player:', '')))
-  if not playerId then return end
+-- Watch for Statebag changes
+AddStateBagChangeHandler('waiterTray', nil, function(bagName, key, value, _reserved, replicated)
+  local playerIdx = GetPlayerFromStateBagName(bagName)
+  if playerIdx == 0 then return end
 
-  lib.print.info(('Tray statebag changed for player %s'):format(playerId))
+  -- Get Server ID (for our storage keys)
+  local playerId = GetPlayerServerId(playerIdx)
 
-  -- Update visuals
   updatePlayerTray(playerId, value)
 end)
 
--- Cleanup on resource stop
-AddEventHandler('onResourceStop', function(resourceName)
-  if GetCurrentResourceName() ~= resourceName then return end
-
-  for playerId, _ in pairs(playerTrays) do
-    cleanupPlayerTray(playerId)
+-- Cleanup on stop
+AddEventHandler('onResourceStop', function(resource)
+  if resource == GetCurrentResourceName() then
+    for playerId, _ in pairs(playerTrays) do
+      cleanupPlayerTray(playerId)
+    end
   end
 end)
