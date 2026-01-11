@@ -145,7 +145,7 @@ function Session:AddDispenser(model, key, coords, physicsProxyModel)
         entity = nil,
         lastPickupTime = 0
     }
-    lib.print.info('DEBUG: Adding Dispenser', key, coords)
+    lib.print.debug('Adding Dispenser', key, coords)
     self:RespawnDispenser(d)
     table.insert(self.dispensers, d)
 end
@@ -227,7 +227,7 @@ function Session:AddItem(entity, key, visualEntity)
         key = key,
         isDispenser = false
     })
-    lib.print.info('DEBUG: Added Item', key, entity)
+    lib.print.debug('Added Item', key, entity)
 end
 
 ---Internal: Spawn helper for proxy

@@ -91,7 +91,7 @@ function SetupKitchenTargets()
     if #options > 0 then
       exports.ox_target:addModel(kitchen.hash, options)
       kitchenTargetsRegistered[kitchen.hash] = true
-      lib.print.info(('Kitchen target registered: hash=%s options=%d'):format(kitchen.hash, #options))
+      lib.print.debug(('Kitchen target registered: hash=%s options=%d'):format(kitchen.hash, #options))
     end
 
     ::continue::
@@ -105,7 +105,7 @@ function RemoveKitchenTargets()
     for actionKey, _ in pairs(sharedConfig.Actions) do
       exports.ox_target:removeModel(hash, 'waiter_' .. actionKey)
     end
-    lib.print.info(('Kitchen target removed for hash %s'):format(hash))
+    lib.print.debug(('Kitchen target removed for hash %s'):format(hash))
   end
   kitchenTargetsRegistered = {}
 end
@@ -124,16 +124,16 @@ function ManageModelHides(enable)
   end
 
   if enable then
-    lib.print.info('World props hidden via engine')
+    lib.print.debug('World props hidden via engine')
   else
-    lib.print.info('World props restored')
+    lib.print.debug('World props restored')
   end
 end
 
 -- Load furniture entities and populate seat tracking
 function LoadFurnitureData()
   if State.restaurantLoaded then
-    lib.print.info('Furniture already loaded')
+    lib.print.debug('Furniture already loaded')
     return
   end
 
@@ -163,7 +163,7 @@ function LoadFurnitureData()
   end
 
   State.restaurantLoaded = true
-  lib.print.info('Furniture loaded!')
+  lib.print.debug('Client furniture loaded!')
 end
 
 -- Disable collision on chairs to allow ped navigation
@@ -189,7 +189,7 @@ function StartProximityManagement()
   cleanupThreadActive = true
 
   CreateThread(function()
-    lib.print.info('Proximity management thread started')
+    lib.print.debug('Proximity management thread started')
 
     while State.restaurantLoaded do
       local wasInProximity = isInProximity
@@ -197,13 +197,13 @@ function StartProximityManagement()
 
       -- Player entered proximity
       if isInProximity and not wasInProximity then
-        lib.print.info('Player entered restaurant area')
+        lib.print.debug('Player entered restaurant area')
         UpdateFurnitureCollision()
       end
 
       -- Player left proximity
       if not isInProximity and wasInProximity then
-        lib.print.info('Player left restaurant area')
+        lib.print.debug('Player left restaurant area')
         if #GetMyTray() > 0 then
           TriggerServerEvent('waiter:server:modifyTray', 'clear')
           lib.notify({ type = 'info', description = 'Tray cleared (Left Area)' })
@@ -219,19 +219,19 @@ function StartProximityManagement()
     end
 
     cleanupThreadActive = false
-    lib.print.info('Proximity management thread stopped')
+    lib.print.debug('Proximity management thread stopped')
   end)
 end
 
 -- Watch for GlobalState changes to handle late-joining players or remote setup
 AddStateBagChangeHandler('waiterFurniture', 'global', function(_, _, value)
   if value then
-    lib.print.info('GlobalState.waiterFurniture changed, loading furniture')
+    lib.print.debug('GlobalState.waiterFurniture changed, loading furniture')
     LoadFurnitureData()
     SetupKitchenTargets()
     StartProximityManagement()
   else
-    lib.print.info('GlobalState.waiterFurniture cleared, cleaning up')
+    lib.print.debug('GlobalState.waiterFurniture cleared, cleaning up')
     CleanupScene()
     ManageModelHides(false)
   end
@@ -243,7 +243,7 @@ CreateThread(function()
 
   -- Check if restaurant is already running
   if GlobalState.waiterFurniture then
-    lib.print.info('Restaurant running on start, loading furniture')
+    lib.print.debug('Restaurant running on start, loading furniture')
     LoadFurnitureData()
     SetupKitchenTargets()
     StartProximityManagement()

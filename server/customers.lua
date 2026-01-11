@@ -67,7 +67,6 @@ local function SpawnCustomer()
   end
 
   if #availableSeats == 0 then
-    -- lib.print.info('No available seats for customer') -- Too spammy
     return
   end
 
@@ -109,7 +108,7 @@ local function SpawnCustomer()
   -- Set entity statebag for this specific customer
   Entity(ped).state:set('waiterCustomer', customerData, true)
 
-  lib.print.info(('Customer %d spawned at seat %d'):format(customerId, seat.id))
+  lib.print.debug(('Customer %d spawned at seat %d'):format(customerId, seat.id))
 
   -- Start customer logic (patience monitoring only)
   CreateThread(function()
@@ -139,7 +138,7 @@ local function SpawnCustomer()
         if customer.leavingTimer and (GetGameTimer() - customer.leavingTimer) > sharedConfig.WalkoutTimeout then
           if DoesEntityExist(ped) then DeleteEntity(ped) end
           customers[customerId] = nil
-          lib.print.info(('Customer %d cleanup: walkout timeout'):format(customerId))
+          lib.print.debug(('Customer %d cleanup: walkout timeout'):format(customerId))
           break
         end
       end
@@ -171,7 +170,7 @@ RegisterNetEvent('waiter:server:customerArrived', function(customerId)
     end
   end)
 
-  lib.print.info(('Customer %d arrived at seat'):format(customerId))
+  lib.print.debug(('Customer %d arrived at seat'):format(customerId))
 end)
 
 RegisterNetEvent('waiter:server:customerExited', function(customerId)
@@ -183,7 +182,7 @@ RegisterNetEvent('waiter:server:customerExited', function(customerId)
     DeleteEntity(ped)
   end
   customers[customerId] = nil
-  lib.print.info(('Customer %d exited and cleaned up'):format(customerId))
+  lib.print.debug(('Customer %d exited and cleaned up'):format(customerId))
 end)
 
 RegisterNetEvent('waiter:server:takeOrder', function(customerId)
@@ -197,7 +196,7 @@ RegisterNetEvent('waiter:server:takeOrder', function(customerId)
   customer.patienceTimer = GetGameTimer()
   Entity(ped).state:set('waiterCustomer', customer, true)
 
-  lib.print.info(('Order taken for customer %d'):format(customerId))
+  lib.print.debug(('Order taken for customer %d'):format(customerId))
 end)
 
 RegisterNetEvent('waiter:server:deliverFood', function(customerId, itemsDelivered)
@@ -211,7 +210,7 @@ RegisterNetEvent('waiter:server:deliverFood', function(customerId, itemsDelivere
   if #customer.order == 0 then
     customer.status = 'eating'
     Entity(ped).state:set('waiterCustomer', customer, true)
-    lib.print.info(('Customer %d is eating'):format(customerId))
+    lib.print.debug(('Customer %d is eating'):format(customerId))
   else
     -- Still waiting for more items
     customer.patienceTimer = GetGameTimer()
@@ -239,7 +238,7 @@ function ServerCustomers.StartSpawning()
       SpawnCustomer()
       Wait(sharedConfig.SpawnInterval)
     end
-    lib.print.info('Customer spawning loop stopped')
+    lib.print.debug('Customer spawning loop stopped')
   end)
 end
 
@@ -252,7 +251,7 @@ function ServerCustomers.Cleanup()
     end
   end
   customers = {}
-  lib.print.info('All customers cleaned up')
+  lib.print.debug('All customers cleaned up')
 end
 
 -- Cleanup on resource stop

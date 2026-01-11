@@ -1,4 +1,4 @@
-local clientConfig = require 'config.client'
+-- No changes needed (no prints found)
 local sharedConfig = require 'config.shared'
 local DragDrop = require 'client.lib.dragdrop'
 local Tray = require 'client.lib.tray'

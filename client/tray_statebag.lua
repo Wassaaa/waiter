@@ -25,7 +25,7 @@ end
 
 ---Update tray visuals from Statebag
 local function updatePlayerTray(playerId, trayState)
-  lib.print.info('DEBUG: updatePlayerTray', playerId, 'State:', json.encode(trayState))
+  lib.print.debug('updatePlayerTray', playerId, 'State:', json.encode(trayState))
 
   -- Cleanup previous
   cleanupPlayerTray(playerId, trayState == nil or #trayState == 0)
@@ -34,12 +34,12 @@ local function updatePlayerTray(playerId, trayState)
 
   local playerIdx = GetPlayerFromServerId(playerId)
   if playerIdx == -1 then
-    lib.print.info('DEBUG: Player not found (Out of scope)', playerId)
+    lib.print.debug('Player not found (Out of scope)', playerId)
     return
   end
   local ped = GetPlayerPed(playerIdx)
   if not DoesEntityExist(ped) then
-    lib.print.error('DEBUG: Ped not found for player index by server id', playerId, playerIdx)
+    lib.print.debug('Ped not found for player index by server id', playerId, playerIdx)
     return
   end
 

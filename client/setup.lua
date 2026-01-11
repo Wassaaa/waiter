@@ -23,9 +23,6 @@ RegisterCommand('waiter:setup', function()
     local trayPos = standPos + (forward * 0.8)
     local trayModel = joaat(sharedConfig.Tray.prop)
 
-    lib.print.info('Station Setup Started')
-    lib.print.info('Stand Position captured:', standVec4)
-
     -- Create Session
     local session = DragDrop.NewSession({
         cameraPos = standPos - (forward * 1.5) + vector3(0, 0, 2.0),

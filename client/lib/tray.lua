@@ -27,7 +27,7 @@ function Tray.New(model, coords, heading)
     end
 
     self.entity = CreateObject(self.model, coords.x, coords.y, coords.z, false, false, false)
-    lib.print.info('DEBUG: Tray Entity Created:', self.entity, 'at', coords)
+    lib.print.debug('Tray Entity Created:', self.entity, 'at', coords)
 
     if self.entity == 0 then
         lib.print.error('ERROR: Failed to create Tray object for model', self.model, 'at', coords)
@@ -105,7 +105,7 @@ function Tray:AddStateItems(stateItems)
 
             table.insert(self.items, itemEntity)
         else
-            lib.print.error('DEBUG: Missing action or prop for key', key)
+            lib.print.debug('Missing action or prop for key', key)
         end
     end
 end
@@ -160,7 +160,7 @@ function Tray:GetExportData(candidateItems)
                     rz = relRot.z
                 })
             else
-                lib.print.info('DEBUG: Item excluded', item.key,
+                lib.print.debug('Item excluded', item.key,
                     string.format('LocalPos: %.2f, %.2f, %.2f | Bounds X[%.2f, %.2f] Y[%.2f, %.2f]',
                         localPos.x, localPos.y, localPos.z, minX, maxX, minY, maxY))
             end

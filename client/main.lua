@@ -38,7 +38,7 @@ local function SetupManagementZone()
       }
     }
   })
-  lib.print.info('Management zone setup at ' .. tostring(mgmt.coords))
+  lib.print.debug('Management zone setup at ' .. tostring(mgmt.coords))
 end
 
 -- Job Events
@@ -48,7 +48,7 @@ end
 
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
   local player = exports.qbx_core:GetPlayerData()
-  lib.print.info("I loaded")
+  lib.print.debug("I loaded")
   if player then UpdateJob(player.job) end
 end)
 
@@ -66,7 +66,7 @@ end)
 
 -- Monitor Global State Changes
 AddStateBagChangeHandler('WaiterOpen', 'global', function(bagName, key, value, _reserved, replicated)
-  lib.print.info(('Restaurant state (%s) changed to: %s (Replicated: %s)'):format(bagName, tostring(value),
+  lib.print.debug(('Restaurant state (%s) changed to: %s (Replicated: %s)'):format(bagName, tostring(value),
     tostring(replicated)))
 end)
 

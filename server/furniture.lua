@@ -61,7 +61,7 @@ function ServerFurniture.Cleanup()
   end
 
   GlobalState.waiterFurniture = nil
-  lib.print.info('Furniture cleaned up')
+  lib.print.debug('Furniture cleaned up')
 end
 
 ---Setup Restaurant Furniture
@@ -69,7 +69,7 @@ end
 function ServerFurniture.Setup()
   -- Clean up any existing furniture first
   if GlobalState.waiterFurniture then
-    lib.print.info('Cleaning up existing furniture before spawning new')
+    lib.print.debug('Cleaning up existing furniture before spawning new')
     ServerFurniture.Cleanup()
     Wait(500)
   end
@@ -77,7 +77,7 @@ function ServerFurniture.Setup()
   local furniture = {}
   local counts = { table = 0, chair = 0, kitchen = 0 }
 
-  lib.print.info('Spawning furniture server-side')
+  lib.print.debug('Spawning furniture server-side')
   for _, item in ipairs(sharedConfig.Furniture) do
     local _, netid = SpawnProp(item)
 
@@ -90,7 +90,7 @@ function ServerFurniture.Setup()
 
   GlobalState.waiterFurniture = furniture
 
-  lib.print.info(('Spawned: %d tables, %d chairs, %d kitchen props'):format(
+  lib.print.debug(('Spawned: %d tables, %d chairs, %d kitchen props'):format(
     counts.table, counts.chair, counts.kitchen
   ))
 

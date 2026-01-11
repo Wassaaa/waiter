@@ -1,7 +1,5 @@
 -- Shared configuration (used by both client and server)
 return {
-  -- Locations
-  -- Locations
   RestaurantCenter = vector3(-1273.85, -882.37, 10.93),
 
   Entrances        = {
@@ -24,6 +22,10 @@ return {
     }
   },
   ProximityRadius  = 30.0, -- Distance for customer spawning, furniture loading, and prop cleanup
+
+  -- Logging Level ('error', 'warn', 'info', 'debug')
+  -- This sets ox:printlevel:waiter automatically on start
+  LogLevel         = 'debug',
 
   -- World Props to Delete (models that exist in the world at this location)
   PropsToDelete    = {

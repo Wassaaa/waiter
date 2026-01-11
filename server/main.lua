@@ -38,6 +38,13 @@ AddEventHandler('onResourceStart', function(resource)
   -- Clear GlobalState
   GlobalState.WaiterOpen = false
 
+  -- Set Log Level
+  if config.LogLevel then
+    local convarName = 'ox:printlevel:' .. GetCurrentResourceName()
+    SetConvarReplicated(convarName, config.LogLevel)
+    lib.print.debug('Log Level set to:', config.LogLevel)
+  end
+
   -- Clear Player States
   local players = GetPlayers()
   for _, src in ipairs(players) do
