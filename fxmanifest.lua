@@ -13,6 +13,7 @@ shared_scripts {
 }
 
 server_scripts {
+  'server/tray.lua',
   'server/main.lua',
   'server/furniture.lua',
   'server/customers.lua',

@@ -152,6 +152,14 @@ local function DeliverFood(customerData)
   if itemsDelivered > 0 then
     for _, item in ipairs(matchedItems) do
       TriggerServerEvent('waiter:server:modifyTray', 'remove', item)
+
+      -- Remove from local order list (first match only)
+      for i, orderKey in ipairs(customerData.order) do
+        if orderKey == item.key then
+          table.remove(customerData.order, i)
+          break
+        end
+      end
     end
 
     -- Update server with new order

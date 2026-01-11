@@ -193,6 +193,10 @@ function StartProximityManagement()
       -- Player left proximity
       if not isInProximity and wasInProximity then
         lib.print.info('Player left restaurant area')
+        if #GetMyTray() > 0 then
+          TriggerServerEvent('waiter:server:modifyTray', 'clear')
+          lib.notify({ type = 'info', description = 'Tray cleared (Left Area)' })
+        end
       end
 
       -- Periodic cleanup while in proximity (world props can respawn)

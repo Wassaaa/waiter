@@ -94,68 +94,17 @@ RegisterNetEvent('waiter:pay', function(itemsDelivered)
   end
 end)
 
----@param action string 'add', 'remove', or 'clear'
----@param item string? Item name (for add/remove)
 RegisterNetEvent('waiter:server:modifyTray', function(action, item)
   local src = source --[[@as number]]
-  local tray = Player(src).state.waiterTray or {}
-
   if action == 'add' then
-    local actionData = item and config.Actions[item]
-    if not actionData or actionData.type ~= 'food' then
-      return exports.qbx_core:Notify(src, 'Invalid item', 'error')
-    end
-
-    if #tray >= config.MaxHandItems then
-      return exports.qbx_core:Notify(src, 'Tray is full!', 'error')
-    end
-
-    table.insert(tray, item)
-    exports.qbx_core:Notify(src, ('Added %s'):format(actionData.label), 'success')
+    ServerTray.Add(src, item)
   elseif action == 'remove' then
-    if not item then return end
-
-    for i, val in ipairs(tray) do
-      if val == item then
-        table.remove(tray, i)
-        local actionData = config.Actions[val]
-        exports.qbx_core:Notify(src, ('Removed %s'):format(actionData and actionData.label or val), 'info')
-        break
-      end
-    end
+    ServerTray.Remove(src, item)
   elseif action == 'clear' then
-    tray = {}
-    exports.qbx_core:Notify(src, 'Tray cleared', 'info')
+    ServerTray.Clear(src)
   elseif action == 'set' then
-    if type(item) == 'table' then
-      -- Validate complex items
-      local validatedTray = {}
-      for _, data in ipairs(item) do
-        local key = data.key
-        if key and config.Actions[key] then
-          -- Sanitize: Keep only necessary data to prevent state bloat/injection
-          table.insert(validatedTray, {
-            key = key,
-            x = tonumber(data.x),
-            y = tonumber(data.y),
-            z = tonumber(data.z),
-            rx = tonumber(data.rx),
-            ry = tonumber(data.ry),
-            rz = tonumber(data.rz)
-          })
-        end
-      end
-
-      if #validatedTray > config.MaxHandItems then
-        return exports.qbx_core:Notify(src, 'Too many items!', 'error')
-      end
-
-      tray = validatedTray
-      exports.qbx_core:Notify(src, 'Tray assembled', 'success')
-    end
+    ServerTray.Set(src, item)
   end
-
-  Player(src).state:set('waiterTray', tray, true)
 end)
 
 -- Callbacks

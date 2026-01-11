@@ -23,3 +23,27 @@ function CleanupScene()
   -- Reset Logic
   State.restaurantLoaded = false
 end
+
+function GetMyTray()
+  return LocalPlayer.state.waiterTray or {}
+end
+
+function MatchTrayWithOrder(tray, order)
+  local matchedItems = {}
+  local itemsDelivered = 0
+  -- Shallow copy to track consumption without modifying source immediately
+  local availableItems = { table.unpack(tray) }
+
+  for _, orderKey in ipairs(order) do
+    for i, item in ipairs(availableItems) do
+      if item.key == orderKey then
+        table.insert(matchedItems, item)
+        itemsDelivered = itemsDelivered + 1
+        table.remove(availableItems, i)
+        break
+      end
+    end
+  end
+
+  return matchedItems, itemsDelivered
+end
