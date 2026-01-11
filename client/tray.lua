@@ -246,7 +246,7 @@ if GetConvarInt('waiter_debug', 0) == 1 then
 
     -- Play tray animation and spawn attached tray (real gameplay setup)
     local clientConfig = require 'config.client'
-    PlayAnimUpper(ped, clientConfig.Anims.Tray.dict, clientConfig.Anims.Tray.anim, true)
+    Utils.PlayAnimUpper(ped, clientConfig.Anims.Tray.dict, clientConfig.Anims.Tray.anim, true)
     Wait(300)
 
     -- Spawn tray attached to player (real orientation)
@@ -466,7 +466,7 @@ if GetConvarInt('waiter_debug', 0) == 1 then
 
     -- Play tray animation and spawn attached tray
     local clientConfig = require 'config.client'
-    PlayAnimUpper(ped, clientConfig.Anims.Tray.dict, clientConfig.Anims.Tray.anim, true)
+    Utils.PlayAnimUpper(ped, clientConfig.Anims.Tray.dict, clientConfig.Anims.Tray.anim, true)
     Wait(300)
 
     -- Spawn tray attached to player

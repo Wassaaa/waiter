@@ -61,7 +61,7 @@ local function updatePlayerTray(playerId, trayItems)
   if not DoesEntityExist(ped) then return end
 
   -- Play animation
-  PlayAnimUpper(ped, clientConfig.Anims.Tray.dict, clientConfig.Anims.Tray.anim, true)
+  Utils.PlayAnimUpper(ped, clientConfig.Anims.Tray.dict, clientConfig.Anims.Tray.anim, true)
 
   -- Spawn tray using helper
   local trayProp = SpawnTrayProp(ped)
