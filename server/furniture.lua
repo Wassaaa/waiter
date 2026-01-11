@@ -41,6 +41,9 @@ local function BuildFurnitureEntry(item, netid)
   -- Kitchen props have additional data
   if item.type == 'kitchen' then
     entry.actions = item.actions or {}
+    entry.trayCoords = item.trayCoords
+    entry.standPos = item.standPos
+    entry.dispensers = item.dispensers
   end
 
   return entry

@@ -73,7 +73,18 @@ function SetupKitchenTargets()
           end
           return false
         end,
-        onSelect = function() StartTrayBuilding() end
+        onSelect = function(data)
+          local k = GetKitchenByEntity(data.entity)
+          local stationConfig = nil
+          if k and k.trayCoords and k.standPos then
+            stationConfig = {
+              trayCoords = k.trayCoords,
+              standPos = k.standPos,
+              dispensers = k.dispensers
+            }
+          end
+          StartTrayBuilding(stationConfig)
+        end
       })
     end
 

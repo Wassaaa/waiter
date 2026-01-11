@@ -26,6 +26,7 @@ client_scripts {
   'client/customers.lua',
   'client/furniture.lua',
   'client/tray_minigame.lua',
+  'client/setup.lua',
 }
 
 files {

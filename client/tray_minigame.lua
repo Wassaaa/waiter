@@ -17,26 +17,52 @@ local function getOffset(center, heading, dx, dy)
     return vector3(center.x + wx, center.y + wy, center.z)
 end
 
-function StartTrayBuilding()
+---@param stationConfig table|nil Optional static configuration {trayCoords, standPos}
+function StartTrayBuilding(stationConfig)
     if currentSession and currentSession.active then return end
 
     local ped = cache.ped
-    local forward = GetEntityForwardVector(ped)
-    local coords = GetEntityCoords(ped) + (forward * 0.8)
+    local coords, trayHeading, zHeight
+    local camPos
 
-    -- Level surface height (approx waist height relative to ground, but we use coords.z for simplicity)
-    local zHeight = coords.z
+    if stationConfig then
+        -- Static Mode
+        -- Teleport player to stand position (Simple set coords for now, better implies task sequence but this works for minigame lock)
+        local stand = stationConfig.standPos
+        SetEntityCoords(ped, stand.x, stand.y, stand.z, false, false, false, false)
+        SetEntityHeading(ped, stand.w)
+
+        local tray = stationConfig.trayCoords
+        coords = vector3(tray.x, tray.y, tray.z)
+        trayHeading = tray.w
+        zHeight = tray.z
+
+        -- Calculate camera relative to Tray (looking down at it)
+        -- We place camera in front of the tray (relative to player side) looking down
+        -- Assuming player is "behind" tray (typical counter setup)
+        local fwd = vector3(math.sin(-math.rad(trayHeading)), math.cos(-math.rad(trayHeading)), 0)
+        camPos = coords - (fwd * 0.5) + vector3(0, 0, 1.5)
+    else
+        -- Dynamic Mode
+        local forward = GetEntityForwardVector(ped)
+        coords = GetEntityCoords(ped) + (forward * 0.8)
+        trayHeading = GetEntityHeading(ped)
+        zHeight = coords.z
+
+        camPos = coords - (forward * 0.8) + vector3(0, 0, 1.8)
+    end
 
     -- Capture initial state and clear hand
     local initialState = LocalPlayer.state.waiterTray
     TriggerServerEvent('waiter:server:modifyTray', 'set', {})
 
     -- Spawn the Tray Prop
-    local trayHeading = GetEntityHeading(ped)
     currentTray = Tray.New(sharedConfig.Tray.prop, coords, trayHeading)
 
-    -- Adjust Z to separate tray from ground
-    zHeight = zHeight + 0.05
+    -- Adjust Z to separate tray from ground (only for dynamic, static should be precise)
+    if not stationConfig then
+        zHeight = zHeight + 0.05
+    end
 
     -- Define callbacks
     local function cleanupTray(preserveItems)
@@ -72,7 +98,7 @@ function StartTrayBuilding()
 
     -- Create Session
     currentSession = DragDrop.NewSession({
-        cameraPos = coords - (forward * 0.8) + vector3(0, 0, 1.8),
+        cameraPos = camPos,
         lookAt = coords,
         zHeight = zHeight,
         onFinish = onFinish,
@@ -110,17 +136,31 @@ function StartTrayBuilding()
     end
 
     -- Add Dispensers
-    -- Left Side
-    currentSession:AddDispenser(sharedConfig.Actions.burger.prop, 'burger', getOffset(coords, trayHeading, -0.5, 0.2),
-        sharedConfig.Actions.burger.physicsProxy)
-    currentSession:AddDispenser(sharedConfig.Actions.fries.prop, 'fries', getOffset(coords, trayHeading, -0.5, -0.2),
-        sharedConfig.Actions.fries.physicsProxy)
+    local defaultOffsets = {
+        burger = { -0.5, 0.2 },
+        fries = { -0.5, -0.2 },
+        drink = { 0.5, 0.2 },
+        coffee = { 0.5, -0.2 }
+    }
 
-    -- Right Side
-    currentSession:AddDispenser(sharedConfig.Actions.drink.prop, 'drink', getOffset(coords, trayHeading, 0.5, 0.2),
-        sharedConfig.Actions.drink.physicsProxy)
-    currentSession:AddDispenser(sharedConfig.Actions.coffee.prop, 'coffee', getOffset(coords, trayHeading, 0.5, -0.2),
-        sharedConfig.Actions.coffee.physicsProxy)
+    for key, action in pairs(sharedConfig.Actions) do
+        if action.type == 'food' and action.prop then
+            local pos = nil
+
+            -- Priority: Station Config
+            if stationConfig and stationConfig.dispensers and stationConfig.dispensers[key] then
+                pos = stationConfig.dispensers[key]
+            elseif defaultOffsets[key] then
+                -- Fallback: Default relative offsets
+                local def = defaultOffsets[key]
+                pos = getOffset(coords, trayHeading, def[1], def[2])
+            end
+
+            if pos then
+                currentSession:AddDispenser(action.prop, key, pos, action.physicsProxy)
+            end
+        end
+    end
 
     -- Start
     lib.showTextUI(

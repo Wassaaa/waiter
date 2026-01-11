@@ -66,8 +66,15 @@ return {
       hash = joaat('prop_bbq_5'),
       coords = vector4(-1273.61, -885.89, 10.93, 128.93),
       actions = { 'burger', 'fries', 'drink', 'coffee' },
+      trayCoords = vector4(-1273.5167, -885.8346, 11.8799, 129.5214),
+      standPos = vector4(-1272.7399, -885.2156, 10.9300, 129.5215),
+      dispensers = {
+        drink = vector4(-1273.8322, -885.2936, 11.8799, 0.0000),
+        burger = vector4(-1273.9316, -885.6337, 11.9299, 0.0000),
+        coffee = vector4(-1273.0303, -886.2280, 11.9299, 0.0000),
+        fries = vector4(-1273.4048, -886.2617, 11.8799, 0.0000),
+      },
     }
-
   },
 
   -- Kitchen Actions

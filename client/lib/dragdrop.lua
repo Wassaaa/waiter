@@ -211,14 +211,12 @@ end
 function Session:AddItem(entity, key, visualEntity)
     -- Apply physics settings if enabled
     if self.enableCollision then
-        SetEntityCollision(entity, true, true)
         SetEntityDynamic(entity, true)
         SetEntityHasGravity(entity, true)
         SetActivateObjectPhysicsAsSoonAsItIsUnfrozen(entity, true)
         FreezeEntityPosition(entity, false)
     else
-        -- If collision disabled, freeze and ghost the item
-        SetEntityCollision(entity, false, false)
+        -- If collision disabled (Physics), still allow raycast but freeze
         SetEntityDynamic(entity, false)
         FreezeEntityPosition(entity, true)
     end
@@ -453,7 +451,7 @@ function Session:HandleDrag(hitPos)
 
     if DoesEntityExist(self.draggedItem) then
         local target = hitPos + self.dragOffset
-        local hoverHeight = 0.15
+        local hoverHeight = self.enableCollision and 0.15 or 0.0
         target = vector3(target.x, target.y, self.zHeight + hoverHeight + self.dragZOffset)
 
         if self.enableCollision then
