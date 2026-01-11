@@ -9,7 +9,7 @@ function ServerTray.Add(src, item)
 
     if type(item) ~= 'string' then return end
 
-    local actionData = config.Actions[item]
+    local actionData = config.Items[item]
     if not actionData or actionData.type ~= 'food' then
         return exports.qbx_core:Notify(src, 'Invalid item', 'error')
     end
@@ -44,7 +44,7 @@ function ServerTray.Remove(src, item)
         if match then
             table.remove(tray, i)
             local key = type(val) == 'table' and val.key or val
-            local actionData = config.Actions[key]
+            local actionData = config.Items[key]
             exports.qbx_core:Notify(src, ('Removed %s'):format(actionData and actionData.label or key), 'info')
             removed = true
             break
@@ -71,7 +71,7 @@ function ServerTray.Set(src, trayData)
     local validatedTray = {}
     for _, data in ipairs(trayData) do
         local key = data.key
-        if key and config.Actions[key] then
+        if key and config.Items[key] then
             -- Sanitize
             table.insert(validatedTray, {
                 key = key,

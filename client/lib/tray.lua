@@ -84,7 +84,7 @@ end
 function Tray:AddStateItems(stateItems)
     for _, itemData in ipairs(stateItems) do
         local key = itemData.key
-        local action = sharedConfig.Actions[key]
+        local action = sharedConfig.Items[key]
         if action and action.prop then
             local model = joaat(action.prop)
             if lib and lib.requestModel then

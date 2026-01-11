@@ -68,7 +68,7 @@ function SetupKitchenTargets()
 
           -- Check if ANY food action is present on this specific entity
           for _, a in ipairs(k.actions) do
-            local d = sharedConfig.Actions[a]
+            local d = sharedConfig.Items[a]
             if d and d.type == 'food' then return true end
           end
           return false
@@ -102,7 +102,7 @@ end
 function RemoveKitchenTargets()
   for hash, _ in pairs(kitchenTargetsRegistered) do
     -- Remove all possible action options
-    for actionKey, _ in pairs(sharedConfig.Actions) do
+    for actionKey, _ in pairs(sharedConfig.Items) do
       exports.ox_target:removeModel(hash, 'waiter_' .. actionKey)
     end
     lib.print.debug(('Kitchen target removed for hash %s'):format(hash))

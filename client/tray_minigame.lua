@@ -115,7 +115,7 @@ function StartTrayBuilding(stationConfig)
     if initialState and type(initialState) == 'table' then
         for _, itemData in ipairs(initialState) do
             local key = itemData.key
-            local action = sharedConfig.Actions[key]
+            local action = sharedConfig.Items[key]
 
             if action and action.prop and currentTray and DoesEntityExist(currentTray.entity) then
                 -- Calculate world position
@@ -143,7 +143,7 @@ function StartTrayBuilding(stationConfig)
         coffee = { 0.5, -0.2 }
     }
 
-    for key, action in pairs(sharedConfig.Actions) do
+    for key, action in pairs(sharedConfig.Items) do
         if action.type == 'food' and action.prop then
             local pos = nil
 

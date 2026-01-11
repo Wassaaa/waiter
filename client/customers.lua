@@ -131,7 +131,7 @@ end
 local function TakeOrder(customerData)
   local orderText = ""
   for i, item in ipairs(customerData.order) do
-    orderText = orderText .. sharedConfig.Actions[item].label .. (i < #customerData.order and ", " or "")
+    orderText = orderText .. sharedConfig.Items[item].label .. (i < #customerData.order and ", " or "")
   end
 
   if IsWaiter() then
@@ -179,7 +179,7 @@ local function DeliverFood(customerData)
       -- Partial Delivery
       local remainingStr = ""
       for _, v in pairs(customerData.order) do
-        remainingStr = remainingStr .. sharedConfig.Actions[v].label .. ", "
+        remainingStr = remainingStr .. sharedConfig.Items[v].label .. ", "
       end
 
       lib.notify({
@@ -192,7 +192,7 @@ local function DeliverFood(customerData)
     -- No Matches
     local orderStr = ""
     for _, v in pairs(customerData.order) do
-      orderStr = orderStr .. sharedConfig.Actions[v].label .. ", "
+      orderStr = orderStr .. sharedConfig.Items[v].label .. ", "
     end
     lib.notify({ type = 'error', description = 'Wrong Items! Customer needs: ' .. orderStr })
   end

@@ -10,7 +10,7 @@ local customers = {}
 ---@return table order Array of action keys (food items only)
 local function generateOrder()
   local foodKeys = {}
-  for k, v in pairs(sharedConfig.Actions) do
+  for k, v in pairs(sharedConfig.Items) do
     if v.type == 'food' then
       table.insert(foodKeys, k)
     end

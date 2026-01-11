@@ -83,7 +83,7 @@ return {
   -- type: 'food' = orderable item with prop, 'utility' = action only (clear tray, etc)
   -- label: display name (used in notifications, orders) - required for 'food' type
   -- price/prop: required for 'food' type
-  Actions          = {
+  Items            = {
     burger = {
       type = 'food',
       label = 'Burger',

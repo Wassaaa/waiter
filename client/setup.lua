@@ -87,7 +87,7 @@ dispensers = {
 
     -- Spawn Dispensers
     local spawnOffset = 0.5
-    for key, data in pairs(sharedConfig.Actions) do
+    for key, data in pairs(sharedConfig.Items) do
         if data.type == 'food' and data.prop then
             local model = joaat(data.prop)
             if lib.requestModel(model) then
