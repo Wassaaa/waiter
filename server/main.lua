@@ -126,6 +126,11 @@ RegisterNetEvent('waiter:server:modifyTray', function(action, item)
   elseif action == 'clear' then
     tray = {}
     exports.qbx_core:Notify(src, 'Tray cleared', 'info')
+  elseif action == 'set' then
+    if type(item) == 'table' then
+      tray = item
+      exports.qbx_core:Notify(src, 'Tray assembled', 'success')
+    end
   end
 
   Player(src).state:set('waiterTray', tray, true)

@@ -12,11 +12,6 @@ shared_scripts {
   'shared/utils.lua',
 }
 
-files {
-  'config/client.lua',
-  'config/shared.lua',
-}
-
 server_scripts {
   'server/main.lua',
   'server/furniture.lua',
@@ -30,6 +25,15 @@ client_scripts {
   'client/tray_statebag.lua',
   'client/customers.lua',
   'client/furniture.lua',
+  'client/tray_minigame.lua',
+}
+
+files {
+  'config/client.lua',
+  'config/shared.lua',
+  'client/lib/controls.lua',
+  'client/lib/raycast.lua',
+  'client/lib/dragdrop.lua',
 }
 
 dependencies {

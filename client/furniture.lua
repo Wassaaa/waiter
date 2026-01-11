@@ -44,30 +44,61 @@ function SetupKitchenTargets()
     local options = {}
     local defaults = sharedConfig.TargetDefaults
 
-    -- Add options for each action this kitchen supports
+    -- Split actions into food and utility
+    local hasFood = false
+
+    -- Process utility actions explicitly
     for _, actionKey in ipairs(kitchen.actions or {}) do
       local actionData = sharedConfig.Actions[actionKey]
       if actionData then
-        local target = actionData.target or {}
-        local action = target.action or defaults.action
+        if actionData.type == 'food' then
+          hasFood = true
+        else
+          -- Utility targets (clear tray, etc)
+          local target = actionData.target or {}
+          local action = target.action or defaults.action
 
-        table.insert(options, {
-          name = 'waiter_' .. actionKey,
-          icon = target.icon or defaults.icon,
-          label = target.label or defaults.label:format(actionData.label or actionKey),
-          distance = target.distance or defaults.distance,
-          canInteract = function(entity)
-            if not IsWaiter() then return false end
-            local k = GetKitchenByEntity(entity)
-            if not k or not k.actions then return false end
-            for _, a in ipairs(k.actions) do
-              if a == actionKey then return true end
-            end
-            return false
-          end,
-          onSelect = function() ModifyHand(action, actionKey) end
-        })
+          table.insert(options, {
+            name = 'waiter_' .. actionKey,
+            icon = target.icon or defaults.icon,
+            label = target.label or defaults.label:format(actionData.label or actionKey),
+            distance = target.distance or defaults.distance,
+            canInteract = function(entity)
+              if not IsWaiter() then return false end
+              local k = GetKitchenByEntity(entity)
+              if not k or not k.actions then return false end
+              for _, a in ipairs(k.actions) do
+                if a == actionKey then return true end
+              end
+              return false
+            end,
+            onSelect = function() ModifyHand(action, actionKey) end
+          })
+        end
       end
+    end
+
+    -- Add single 'Assemble Tray' option if any food is available
+    if hasFood then
+      table.insert(options, {
+        name = 'waiter_tray_build',
+        icon = 'fa-solid fa-utensils',
+        label = 'Assemble Tray',
+        distance = 2.0,
+        canInteract = function(entity)
+          if not IsWaiter() then return false end
+          local k = GetKitchenByEntity(entity)
+          if not k or not k.actions then return false end
+
+          -- Check if ANY food action is present on this specific entity
+          for _, a in ipairs(k.actions) do
+            local d = sharedConfig.Actions[a]
+            if d and d.type == 'food' then return true end
+          end
+          return false
+        end,
+        onSelect = function() StartTrayBuilding() end
+      })
     end
 
     if #options > 0 then
