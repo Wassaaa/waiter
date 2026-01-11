@@ -16,7 +16,7 @@ Tray.__index = Tray
 function Tray.New(model, coords, heading)
     local self = setmetatable({}, Tray)
     self.items = {}
-    -- Fix type casting for lint
+    -- Type cast for linter
     self.model = (type(model) == 'string' and joaat(model) or model) --[[@as number]]
 
     if lib and lib.requestModel then
@@ -55,7 +55,7 @@ function Tray.CreateAttached(ped)
         while not HasModelLoaded(self.model) do Wait(0) end
     end
 
-    -- Create object at 0,0,0 initially, then attach using offsets
+    -- Initialize object before attachment
     self.entity = CreateObject(self.model, 0, 0, 0, false, false, false)
 
     if self.entity == 0 then
@@ -130,20 +130,19 @@ function Tray:GetExportData(candidateItems)
             local itemEntity = item.entity
             local itemModel = GetEntityModel(itemEntity)
 
-            -- Calculate Item Bottom Center (approximate)
-            -- We assume item is relatively upright for this check.
+            -- Calculate approximate item bottom center in world space
             local iMin, _ = GetModelDimensions(itemModel)
             local itemPos = GetEntityCoords(itemEntity)
 
             local bottomPos = GetOffsetFromEntityInWorldCoords(itemEntity, 0.0, 0.0, iMin.z)
 
-            -- Transform this point to Tray Local Space
+            -- Transform to tray local space
             local localPos = GetOffsetFromEntityGivenWorldCoords(self.entity, bottomPos.x, bottomPos.y, bottomPos.z)
 
-            -- Check if this Local Point is inside the Tray's "Volume"
+            -- Check if point is within tray bounding box
             local inX = localPos.x >= minX and localPos.x <= maxX
             local inY = localPos.y >= minY and localPos.y <= maxY
-            local inZ = localPos.z >= (minZ - 0.1) and localPos.z <= maxZTop -- tolerance on bottom
+            local inZ = localPos.z >= (minZ - 0.1) and localPos.z <= maxZTop
 
             if inX and inY and inZ then
                 local itemRot = GetEntityRotation(itemEntity, 2)

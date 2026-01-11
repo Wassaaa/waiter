@@ -463,12 +463,10 @@ function Session:HandleDrag(hitPos)
             local velocity = diff * responsiveness
             SetEntityVelocity(self.draggedItem, velocity.x, velocity.y, velocity.z)
 
-            -- Upright Controller (Pitch/Roll -> 0)
+            -- Proportional controller to maintain upright orientation
             local rot = GetEntityRotation(self.draggedItem, 2)
             local angVel = GetEntityRotationVelocity(self.draggedItem)
 
-            -- We want angle to be 0. Error = 0 - angle.
-            -- Using a simple P-element proportional to angle error (in degrees, converted scaling)
             -- Tune these values for "smooth but upright"
             local uprightStrength = 0.2 -- Strength of correction
             local yawDamp = 0.1         -- Dampen Yaw spin

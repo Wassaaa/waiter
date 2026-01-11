@@ -27,7 +27,7 @@ function StartTrayBuilding()
     -- Level surface height (approx waist height relative to ground, but we use coords.z for simplicity)
     local zHeight = coords.z
 
-    -- 1. Capture Current State & Clear Hand
+    -- Capture initial state and clear hand
     local initialState = LocalPlayer.state.waiterTray
     TriggerServerEvent('waiter:server:modifyTray', 'set', {})
 
@@ -35,7 +35,7 @@ function StartTrayBuilding()
     local trayHeading = GetEntityHeading(ped)
     currentTray = Tray.New(sharedConfig.Tray.prop, coords, trayHeading)
 
-    -- Adjust Z to sit on top of tray surface (Approx 5cm thickness)
+    -- Adjust Z to separate tray from ground
     zHeight = zHeight + 0.05
 
     -- Define callbacks
@@ -57,10 +57,10 @@ function StartTrayBuilding()
 
     local function onFinish(itemKeys, items)
         if currentTray and DoesEntityExist(currentTray.entity) then
-            -- Use the Tray class to filter and calculate export data
+            -- Filter export data for items physically on the tray
             local trayData = currentTray:GetExportData(items)
 
-            -- Sync to Server (which updates Statebag -> updates Visuals for all)
+            -- Sync final state to server
             TriggerServerEvent('waiter:server:modifyTray', 'set', trayData)
         end
         cleanupTray(false) -- Destroy local instances, wait for Statebag
@@ -92,11 +92,10 @@ function StartTrayBuilding()
             local action = sharedConfig.Actions[key]
 
             if action and action.prop and currentTray and DoesEntityExist(currentTray.entity) then
-                -- Calculate World Position
+                -- Calculate world position
                 local worldPos = GetOffsetFromEntityInWorldCoords(currentTray.entity, itemData.x, itemData.y, itemData.z)
 
-                -- Spawn Item using Session Logic (registers it for physics)
-                -- Calculate Target Rotation (World = Tray + Relative)
+                -- Calculate target rotation
                 local trayRot = GetEntityRotation(currentTray.entity, 2)
                 local targetRot = vector3(trayRot.x + itemData.rx, trayRot.y + itemData.ry, trayRot.z + itemData.rz)
 
@@ -104,7 +103,6 @@ function StartTrayBuilding()
                     targetRot)
 
                 if DoesEntityExist(newItemEntity) then
-                    -- Ensure it wakes up with correct velocity (zero)
                     SetEntityVelocity(newItemEntity, 0, 0, 0)
                 end
             end
