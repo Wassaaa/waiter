@@ -64,34 +64,28 @@ return {
     {
       type = 'kitchen',
       hash = joaat('prop_bbq_5'),
-      coords = vector4(-1273.61, -885.89, 10.93, 310.93),
-      actions = { 'burger', 'fries', 'drink', 'coffee', 'clearTray' },
+      coords = vector4(-1273.61, -885.89, 10.93, 128.93),
+      actions = { 'burger', 'fries', 'drink', 'coffee' },
     }
+
   },
 
   -- Kitchen Actions
   -- type: 'food' = orderable item with prop, 'utility' = action only (clear tray, etc)
-  -- target.action: 'add' (default) adds item to tray, 'clear' clears tray
-  -- target.icon/label/distance: ox_target options - all optional with defaults
   -- label: display name (used in notifications, orders) - required for 'food' type
   -- price/prop: required for 'food' type
-  -- offset: {x, y, z, rx, ry, rz} adjustments when placed on tray (optional)
   Actions          = {
     burger = {
       type = 'food',
       label = 'Burger',
       price = 25,
       prop = 'prop_cs_burger_01',
-      target = { icon = 'fa-solid fa-burger', label = 'Cook Burger' },
-      offset = { x = 0.0003, y = 0.0012, z = 0.0235, rx = -3.2, ry = 1.7, rz = -0.1 },
     },
     drink = {
       type = 'food',
       label = 'Drink',
       price = 10,
       prop = 'ng_proc_sodacup_01a',
-      target = { icon = 'fa-solid fa-martini-glass', label = 'Pour Drink' },
-      offset = { x = -0.0005, z = 0.0490, rx = -3.2, ry = 1.7, rz = -0.2 },
     },
     fries = {
       type = 'food',
@@ -99,20 +93,12 @@ return {
       price = 15,
       prop = 'prop_food_bs_chips',
       physicsProxy = 'prop_paper_bag_small',
-      target = { icon = 'fa-solid fa-plus', label = 'Grab Fries' },
-      offset = { x = 0.0004, y = 0.0007, z = -0.0156, rz = -0.2 },
     },
     coffee = {
       type = 'food',
       label = 'Coffee',
       price = 15,
       prop = 'p_amb_coffeecup_01',
-      target = { icon = 'fa-solid fa-coffee', label = 'Get Coffee' },
-      offset = { y = 0.0003, z = -0.0077, rx = -3.2, ry = 1.7, rz = -0.3 },
-    },
-    clearTray = {
-      type = 'utility',
-      target = { icon = 'fa-solid fa-trash', label = 'Clear Tray', action = 'clear' },
     },
   },
 
@@ -123,29 +109,6 @@ return {
     bone = 57005,
     offset = { x = 0.1, y = 0.05, z = -0.1 },
     rotation = { x = 190.0, y = 300.0, z = 50.0 },
-
-    -- Slot positions on the tray (relative to tray prop)
-    -- rx, ry, rz are optional rotation offsets (for edge items to look slanted)
-    -- More slots can be unlocked based on skill in future
-    slots = {
-      { x = 0.1775,  y = 0.0939,  z = 0.0167, rx = 3.2,  ry = -1.7 },
-      { x = -0.1600, y = -0.1121, z = 0.0190, rx = -6.0, rz = -1.2 },
-      { x = 0.1827,  y = -0.0816, z = 0.0183, rx = -0.1, ry = -0.3, rz = -4.5 },
-      { x = -0.1478, y = 0.1142,  z = 0.0221, rx = 12.6, ry = -2.8, rz = 75.2 },
-      { x = 0.0060,  y = 0.0592,  z = 0.0156 },
-      { x = 0.0027,  y = -0.0930, z = 0.0173, rz = -0.3 },
-    },
-
-    -- Default item offset (used if item.offset is missing)
-    defaultItemOffset = { x = 0.0, y = 0.0, z = 0.0, rx = 0.0, ry = 0.0, rz = 0.0 },
-  },
-
-  -- Defaults for ox_target options (used when item.target.X is missing)
-  TargetDefaults   = {
-    action = 'add',
-    icon = 'fa-solid fa-plus',
-    label = 'Pick up %s', -- %s = item label
-    distance = 2.0,
   },
 
   -- Timings (in milliseconds)
@@ -179,7 +142,7 @@ return {
   RequireOnDuty    = false,    -- Require player to be on duty to work
 
   -- Gameplay Limits
-  MaxHandItems     = 12, -- Max items on tray at once
+  MaxHandItems     = 32, -- Max items on tray at once
   OrderSizeMin     = 1,  -- Min items per customer order
   OrderSizeMax     = 3,  -- Max items per customer order
 }

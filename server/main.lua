@@ -31,6 +31,23 @@ end
 -- Initialize Global State
 GlobalState.WaiterOpen = false
 
+-- Cleanup state on resource start (fixes state persistence on restart)
+AddEventHandler('onResourceStart', function(resource)
+  if resource ~= GetCurrentResourceName() then return end
+
+  -- Clear GlobalState
+  GlobalState.WaiterOpen = false
+
+  -- Clear Player States
+  local players = GetPlayers()
+  for _, src in ipairs(players) do
+    local pState = Player(src).state
+    if pState.waiterTray then
+      pState:set('waiterTray', {}, true)
+    end
+  end
+end)
+
 ---Toggle restaurant state
 RegisterNetEvent('waiter:server:toggleRestaurant', function()
   local src = source --[[@as number]]

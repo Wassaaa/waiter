@@ -127,7 +127,9 @@ function Tray:GetExportData(candidateItems)
 
     for _, item in ipairs(candidateItems) do
         if DoesEntityExist(item.entity) then
-            local itemEntity = item.entity
+            -- Prefer visual entity if available (Physics Proxy)
+            local itemEntity = (item.visualEntity and DoesEntityExist(item.visualEntity)) and item.visualEntity or
+                item.entity
             local itemModel = GetEntityModel(itemEntity)
 
             -- Calculate approximate item position (Origin)
