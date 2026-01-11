@@ -78,17 +78,6 @@ local knownModels = {
   [joaat('prop_table_01')] = 'prop_table_01',
 }
 
--- Commands
-RegisterCommand('droptray', function()
-  if #GetMyTray() > 0 then
-    TriggerServerEvent('waiter:server:modifyTray', 'clear')
-    lib.notify({ type = 'info', description = 'Tray dropped' })
-  else
-    lib.notify({ type = 'error', description = 'You are not holding a tray' })
-  end
-end, false)
-RegisterCommand('cleartray', function() ExecuteCommand('droptray') end, false)
-
 RegisterCommand('stealscene', function(source, args)
   local playerPed = PlayerPedId()
   local playerCoords = GetEntityCoords(playerPed)

@@ -265,12 +265,13 @@ end
 ---@param coords vector3 Spawn coords
 ---@param key string
 ---@param physicsProxyModel number|nil Optional proxy model
+---@param rotation vector3|nil Optional rotation (degrees)
 ---@return number entity (The physics host)
-function Session:SpawnItem(model, coords, key, physicsProxyModel)
+function Session:SpawnItem(model, coords, key, physicsProxyModel, rotation)
     lib.requestModel(model)
 
     -- Spawn the visual prop
-    local prop = CreateObject(model, coords.x, coords.y, coords.z + 0.05, false, false, false)
+    local prop = CreateObject(model, coords.x, coords.y, coords.z, false, false, false)
 
     local finalEntity = prop
     local finalVisual = nil
@@ -291,7 +292,11 @@ function Session:SpawnItem(model, coords, key, physicsProxyModel)
     end
 
     -- Apply Rotation to governing entity
-    SetEntityRotation(finalEntity, 0, 0, math.random(0, 360) * 1.0, 2, true)
+    if rotation then
+        SetEntityRotation(finalEntity, rotation.x, rotation.y, rotation.z, 2, true)
+    else
+        SetEntityRotation(finalEntity, 0, 0, 0, 2, true)
+    end
 
     self:AddItem(finalEntity, key, finalVisual)
     return finalEntity

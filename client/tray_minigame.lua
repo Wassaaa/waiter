@@ -27,6 +27,10 @@ function StartTrayBuilding()
     -- Level surface height (approx waist height relative to ground, but we use coords.z for simplicity)
     local zHeight = coords.z
 
+    -- 1. Capture Current State & Clear Hand
+    local initialState = LocalPlayer.state.waiterTray
+    TriggerServerEvent('waiter:server:modifyTray', 'set', {})
+
     -- Spawn the Tray Prop
     local trayHeading = GetEntityHeading(ped)
     currentTray = Tray.New(sharedConfig.Tray.prop, coords, trayHeading)
@@ -80,6 +84,32 @@ function StartTrayBuilding()
         dispenserCooldown = 1500,
         dispenserRespawnDist = 0.1
     })
+
+    -- 2. Pre-load Items from State
+    if initialState and type(initialState) == 'table' then
+        for _, itemData in ipairs(initialState) do
+            local key = itemData.key
+            local action = sharedConfig.Actions[key]
+
+            if action and action.prop and currentTray and DoesEntityExist(currentTray.entity) then
+                -- Calculate World Position
+                local worldPos = GetOffsetFromEntityInWorldCoords(currentTray.entity, itemData.x, itemData.y, itemData.z)
+
+                -- Spawn Item using Session Logic (registers it for physics)
+                -- Calculate Target Rotation (World = Tray + Relative)
+                local trayRot = GetEntityRotation(currentTray.entity, 2)
+                local targetRot = vector3(trayRot.x + itemData.rx, trayRot.y + itemData.ry, trayRot.z + itemData.rz)
+
+                local newItemEntity = currentSession:SpawnItem(joaat(action.prop), worldPos, key, action.physicsProxy,
+                    targetRot)
+
+                if DoesEntityExist(newItemEntity) then
+                    -- Ensure it wakes up with correct velocity (zero)
+                    SetEntityVelocity(newItemEntity, 0, 0, 0)
+                end
+            end
+        end
+    end
 
     -- Add Dispensers
     -- Left Side
