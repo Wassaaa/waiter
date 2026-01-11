@@ -35,12 +35,20 @@ end
 ---@field model number? Model hash (required for dispensers)
 ---@field physicsProxyModel number? Optional proxy model hash
 
+---@class DispenserItem
+---@field entity number? Entity handle (nil if empty)
+---@field key string Unique key
+---@field model number Model hash
+---@field physicsProxyModel number? Optional proxy model hash
+---@field coords vector3|vector4 Spawn coordinates
+---@field lastPickupTime number Last pickup timestamp
+
 ---@class DragSession
 ---@field active boolean
 ---@field cam number Camera handle
 ---@field zHeight number Plane Z height
 ---@field items DraggableItem[] List of active items
----@field dispensers DraggableItem[] List of dispenser items
+---@field dispensers DispenserItem[] List of dispenser items
 ---@field draggedItem number? Entity handle of currently dragged item
 ---@field dragOffset vector3 Offset from mouse to item origin
 ---@field onFinish fun(keys: string[], items: DraggableItem[]) Callback on finish
@@ -55,6 +63,10 @@ end
 ---@field orbitPitch number Elevation angle (radians)
 ---@field debugMode boolean Show debug visuals
 ---@field dragZOffset number Vertical offset for drag
+---@field probeHandle number? Async Raycast Handle
+---@field lastHitEntity number? Last entity hit by raycast
+---@field dispenserCooldown number Time in ms before refill
+---@field dispenserRespawnDist number Safe distance in meters for refill
 local Session = {}
 Session.__index = Session
 
@@ -76,6 +88,10 @@ function DragDrop.NewSession(config)
     self.physicsHostModel = config.physicsHostModel
     self.debugMode = false
     self.dragZOffset = 0.0
+    self.probeHandle = nil
+    self.lastHitEntity = nil
+    self.dispenserCooldown = config.dispenserCooldown or 1000
+    self.dispenserRespawnDist = config.dispenserRespawnDist or 0.6
 
     -- Orbit Camera State
     self.cameraMode = false
@@ -94,6 +110,19 @@ function DragDrop.NewSession(config)
     return self
 end
 
+---Internal: Respawn a dispenser prop
+function Session:RespawnDispenser(d)
+    lib.requestModel(d.model)
+    local coords = d.coords
+    local prop = CreateObject(d.model, coords.x, coords.y, coords.z, false, false, false)
+    FreezeEntityPosition(prop, true)
+    SetEntityCollision(prop, true, true)
+    if type(coords) == 'vector4' then
+        SetEntityHeading(prop, coords.w)
+    end
+    d.entity = prop
+end
+
 ---Add a dispenser prop that spawns items
 ---@param model string|number Model or hash
 ---@param key string Unique item key (e.g. 'burger')
@@ -101,28 +130,75 @@ end
 ---@param physicsProxyModel string|number|nil Optional proxy model
 function Session:AddDispenser(model, key, coords, physicsProxyModel)
     local modelHash = type(model) == 'string' and joaat(model) or model
-    lib.requestModel(modelHash)
-
-    local prop = CreateObject(modelHash, coords.x, coords.y, coords.z, false, false, false)
-    FreezeEntityPosition(prop, true)
-    SetEntityCollision(prop, false, false)
-
-    -- Apply random rotation if provided in coords (vector4)
-    if type(coords) == 'vector4' then
-        SetEntityHeading(prop, coords.w)
-    end
-
     local proxyHash = nil
     if physicsProxyModel then
         proxyHash = type(physicsProxyModel) == 'string' and joaat(physicsProxyModel) or physicsProxyModel
     end
 
-    table.insert(self.dispensers, {
-        entity = prop,
-        key = key,
+    local d = {
         model = modelHash,
-        physicsProxyModel = proxyHash
-    })
+        key = key,
+        coords = coords,
+        physicsProxyModel = proxyHash,
+        entity = nil,
+        lastPickupTime = 0
+    }
+    self:RespawnDispenser(d)
+    table.insert(self.dispensers, d)
+end
+
+---Internal: Prepare dispenser prop for physics and add to Items
+function Session:ConvertDispenserToItem(d)
+    if not d.entity then return nil end
+    local entity = d.entity
+
+    -- Cleanup Dispenser State
+    d.entity = nil
+    d.lastPickupTime = GetGameTimer()
+
+    local finalEntity = entity
+    local finalVisual = nil
+
+    if self.enableCollision then
+        if d.physicsProxyModel then
+            -- Attach Proxy logic
+            local host = self:AttachProxy(entity, d.physicsProxyModel)
+            finalEntity = host
+            finalVisual = entity
+        else
+            -- Direct Physics
+            SetEntityDynamic(entity, true)
+            SetEntityCollision(entity, true, true)
+            SetActivateObjectPhysicsAsSoonAsItIsUnfrozen(entity, true)
+            FreezeEntityPosition(entity, false)
+        end
+    end
+
+    -- Apply Init Rotation
+    SetEntityRotation(finalEntity, 0, 0, math.random(0, 360) * 1.0, 2, true)
+
+    self:AddItem(finalEntity, d.key, finalVisual)
+    return finalEntity
+end
+
+---Internal: Refill empty dispensers if conditions met
+function Session:UpdateDispensers(hitPos)
+    local now = GetGameTimer()
+    for _, d in ipairs(self.dispensers) do
+        if not d.entity then
+            if (now - d.lastPickupTime) > self.dispenserCooldown then
+                local safeToRespawn = true
+                if hitPos then
+                    local dist = #(hitPos - vector3(d.coords.x, d.coords.y, d.coords.z))
+                    if dist < self.dispenserRespawnDist then safeToRespawn = false end
+                end
+
+                if safeToRespawn then
+                    self:RespawnDispenser(d)
+                end
+            end
+        end
+    end
 end
 
 ---Add an existing item to the session
@@ -317,41 +393,41 @@ function Session:HandleSessionControls()
 end
 
 ---Internal: Handle Left Click
-function Session:HandleClick(hitPos)
+function Session:HandleClick(hitPos, hitEntity)
     local bestDist = 0.15
     local pickedDispenser = nil
+    local pickedItem = nil
 
-    for _, d in ipairs(self.dispensers) do
-        local dist = #(hitPos - GetEntityCoords(d.entity))
-        if dist < bestDist then
-            bestDist = dist
-            pickedDispenser = d
+    -- 1. Check Raycast Hit
+    if hitEntity and hitEntity > 0 then
+        -- Check Dispensers
+        for _, d in ipairs(self.dispensers) do
+            if d.entity == hitEntity then
+                pickedDispenser = d
+                break
+            end
+        end
+        -- Check Items
+        if not pickedDispenser then
+            for _, item in ipairs(self.items) do
+                if item.entity == hitEntity or item.visualEntity == hitEntity then
+                    pickedItem = item.entity -- Store Entity Handle
+                    break
+                end
+            end
         end
     end
 
+    -- Execute Pick
     if pickedDispenser then
-        local newItem = self:SpawnItem(pickedDispenser.model, hitPos, pickedDispenser.key,
-            pickedDispenser.physicsProxyModel)
+        local newItem = self:ConvertDispenserToItem(pickedDispenser)
         self.draggedItem = newItem
         self.dragOffset = vector3(0, 0, 0)
         self.dragZOffset = 0.0
-    else
-        local closestDist = 0.15
-        local closestEntity = nil
-
-        for _, item in ipairs(self.items) do
-            local dist = #(hitPos - GetEntityCoords(item.entity))
-            if dist < closestDist then
-                closestDist = dist
-                closestEntity = item.entity
-            end
-        end
-
-        if closestEntity then
-            self.draggedItem = closestEntity
-            self.dragOffset = GetEntityCoords(closestEntity) - hitPos
-            self.dragZOffset = 0.0
-        end
+    elseif pickedItem then
+        self.draggedItem = pickedItem
+        self.dragOffset = GetEntityCoords(pickedItem) - hitPos
+        self.dragZOffset = 0.0
     end
 end
 
@@ -413,18 +489,19 @@ function Session:HandleRelease()
 end
 
 ---Internal: Handle Delete (Right Click)
-function Session:HandleDelete(hitPos)
-    local closestDist = 0.15
+function Session:HandleDelete(hitPos, hitEntity)
     local matchIndex = -1
 
-    for i, item in ipairs(self.items) do
-        local dist = #(hitPos - GetEntityCoords(item.entity))
-        if dist < closestDist then
-            closestDist = dist
-            matchIndex = i
+    if hitEntity and hitEntity > 0 then
+        for i, item in ipairs(self.items) do
+            if item.entity == hitEntity or item.visualEntity == hitEntity then
+                matchIndex = i
+                break
+            end
         end
     end
 
+    -- Strict Raycast check only.
     if matchIndex ~= -1 then
         local item = self.items[matchIndex]
         if DoesEntityExist(item.entity) then DeleteEntity(item.entity) end
@@ -441,10 +518,29 @@ function Session:HandleInteraction()
     local _, dir = Raycast.FromScreen()
     local hitPos = Raycast.IntersectPlane(camCoords, dir, self.zHeight)
 
+    self:UpdateDispensers(hitPos)
+
+    -- Async Raycast Probe (Only scan when not holding item)
+    if not self.draggedItem then
+        if not self.probeHandle then
+            -- Start new probe (Flags: 16=Objects, Options: 7=Default)
+            self.probeHandle = Raycast.StartProbe(camCoords, dir, 20.0, 16, cache.ped, 7)
+        else
+            local retval, hit, _, _, entityHit = Raycast.CheckProbe(self.probeHandle)
+            if retval ~= 1 then        -- Not Pending (0 or 2)
+                self.lastHitEntity = (hit and entityHit > 0) and entityHit or nil
+                self.probeHandle = nil -- Clear so we can start next frame
+            end
+        end
+    else
+        self.lastHitEntity = nil
+        self.probeHandle = nil
+    end
+
     if hitPos then
         -- Handle Click (Pick Up / Spawn)
         if IsDisabledControlJustPressed(0, Controls.ATTACK) then
-            self:HandleClick(hitPos)
+            self:HandleClick(hitPos, self.lastHitEntity)
         end
 
         -- Handle Dragging
@@ -459,7 +555,7 @@ function Session:HandleInteraction()
 
         -- Handle Right Click (Delete)
         if IsDisabledControlJustPressed(0, Controls.AIM) then
-            self:HandleDelete(hitPos)
+            self:HandleDelete(hitPos, self.lastHitEntity)
         end
     end
 end

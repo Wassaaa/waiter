@@ -72,7 +72,9 @@ function StartTrayBuilding()
         zHeight = zHeight,
         onFinish = onFinish,
         onCancel = onCancel,
-        enableCollision = true
+        enableCollision = true,
+        dispenserCooldown = 1500,
+        dispenserRespawnDist = 0.1
     })
 
     -- Add Dispensers
