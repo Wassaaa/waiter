@@ -53,30 +53,8 @@ function StartTrayBuilding()
 
     local function onFinish(itemKeys, items)
         if currentTray and DoesEntityExist(currentTray.entity) then
-            local trayData = {}
-            local trayEntity = currentTray.entity
-            local trayRot = GetEntityRotation(trayEntity, 2)
-
-            for _, item in ipairs(items) do
-                if DoesEntityExist(item.entity) then
-                    local itemPos = GetEntityCoords(item.entity)
-                    local itemRot = GetEntityRotation(item.entity, 2)
-
-                    -- Calculate Relative Offset and Rotation
-                    local offset = GetOffsetFromEntityGivenWorldCoords(trayEntity, itemPos.x, itemPos.y, itemPos.z)
-                    local relRot = itemRot - trayRot
-
-                    table.insert(trayData, {
-                        key = item.key,
-                        x = offset.x,
-                        y = offset.y,
-                        z = offset.z,
-                        rx = relRot.x,
-                        ry = relRot.y,
-                        rz = relRot.z
-                    })
-                end
-            end
+            -- Use the Tray class to filter and calculate export data
+            local trayData = currentTray:GetExportData(items)
 
             -- Sync to Server (which updates Statebag -> updates Visuals for all)
             TriggerServerEvent('waiter:server:modifyTray', 'set', trayData)
@@ -95,6 +73,9 @@ function StartTrayBuilding()
         zHeight = zHeight,
         onFinish = onFinish,
         onCancel = onCancel,
+        onDebug = function()
+            if currentTray then currentTray:DrawDebugZone() end
+        end,
         enableCollision = true,
         dispenserCooldown = 1500,
         dispenserRespawnDist = 0.1

@@ -67,6 +67,7 @@ end
 ---@field lastHitEntity number? Last entity hit by raycast
 ---@field dispenserCooldown number Time in ms before refill
 ---@field dispenserRespawnDist number Safe distance in meters for refill
+---@field onDebug fun() Callback for custom debug rendering
 local Session = {}
 Session.__index = Session
 
@@ -84,6 +85,7 @@ function DragDrop.NewSession(config)
     self.dragOffset = vector3(0, 0, 0)
     self.onFinish = config.onFinish or function() end
     self.onCancel = config.onCancel or function() end
+    self.onDebug = config.onDebug or function() end
     self.enableCollision = config.enableCollision or false
     self.physicsHostModel = config.physicsHostModel
     self.debugMode = false
@@ -331,6 +333,8 @@ function Session:HandleDebug()
     end
 
     if self.debugMode then
+        self:onDebug()
+
         for _, item in ipairs(self.items) do
             if item.visualEntity then
                 DrawEntityBox(item.entity, 255, 0, 0)       -- Host (Red)
