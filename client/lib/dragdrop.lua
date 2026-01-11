@@ -33,6 +33,7 @@ end
 ---@field key string Unique key for item type (e.g. 'burger')
 ---@field isDispenser boolean If true, clicking spawns a new item instead of dragging this one
 ---@field model number? Model hash (required for dispensers)
+---@field physicsProxyModel number? Optional proxy model hash
 
 ---@class DragSession
 ---@field active boolean
@@ -214,36 +215,35 @@ function Session:SpawnItem(model, coords, key, physicsProxyModel)
     return finalEntity
 end
 
----Internal: Handle input tick
-function Session:ProcessInput()
-    -- Disable controls
+---Internal: Disable all relevant controls
+function Session:DisableControls()
     DisableControlAction(0, Controls.LOOK_LR, true)
     DisableControlAction(0, Controls.LOOK_UD, true)
-    DisableControlAction(0, Controls.ATTACK, true) -- LMB
-    DisableControlAction(0, Controls.AIM, true)    -- RMB
+    DisableControlAction(0, Controls.ATTACK, true)
+    DisableControlAction(0, Controls.AIM, true)
     DisableControlAction(0, Controls.MOVE_LR, true)
     DisableControlAction(0, Controls.MOVE_UD, true)
+    DisableControlAction(0, Controls.SKIP_CUTSCENE, true)
+    DisableControlAction(0, Controls.CELLPHONE_CANCEL, true)
+    DisableControlAction(0, Controls.FRONTEND_PAUSE_ALTERNATE, true)
+    DisableControlAction(0, Controls.FRONTEND_CANCEL, true)
+    DisableControlAction(0, Controls.JUMP, true)
+    DisableControlAction(0, Controls.DETONATE, true)
+    DisableControlAction(0, Controls.VEH_HEADLIGHT, true)
+end
 
-    DisableControlAction(0, Controls.SKIP_CUTSCENE, true)            -- Enter
-    DisableControlAction(0, Controls.CELLPHONE_CANCEL, true)         -- Backspace/Esc/RMB
-    DisableControlAction(0, Controls.FRONTEND_PAUSE_ALTERNATE, true) -- Esc
-    DisableControlAction(0, Controls.FRONTEND_CANCEL, true)          -- Backspace/Esc
-    DisableControlAction(0, Controls.JUMP, true)                     -- Space (Finish)
-    DisableControlAction(0, Controls.DETONATE, true)                 -- G (Toggle Camera)
-    DisableControlAction(0, Controls.VEH_HEADLIGHT, true)            -- H (Toggle Debug)
-
-    -- Toggle Camera Mode
-    if IsDisabledControlJustPressed(0, Controls.DETONATE) then
-        self.cameraMode = not self.cameraMode
-    end
-
-    -- Toggle Debug Mode
+---Internal: Handle Debug Mode logic
+function Session:HandleDebug()
     if IsDisabledControlJustPressed(0, Controls.VEH_HEADLIGHT) then
         self.debugMode = not self.debugMode
         for _, item in ipairs(self.items) do
             if item.visualEntity then
                 SetEntityVisible(item.entity, self.debugMode, false)
                 SetEntityAlpha(item.entity, self.debugMode and 150 or 255, false)
+
+                -- Ensure visual remains visible
+                SetEntityVisible(item.visualEntity, true, false)
+                ResetEntityAlpha(item.visualEntity)
             end
         end
     end
@@ -262,6 +262,14 @@ function Session:ProcessInput()
             end
         end
     end
+end
+
+---Internal: Handle Camera Mode logic
+---@return boolean active Whether camera mode is currently controlling input
+function Session:HandleCamera()
+    if IsDisabledControlJustPressed(0, Controls.DETONATE) then
+        self.cameraMode = not self.cameraMode
+    end
 
     if self.cameraMode then
         local sensitivity = 4.0
@@ -278,123 +286,13 @@ function Session:ProcessInput()
         self.camPos = vector3(x, y, z)
         SetCamCoord(self.cam, x, y, z)
         PointCamAtCoord(self.cam, self.lookAt.x, self.lookAt.y, self.lookAt.z)
-        return
+        return true
     end
+    return false
+end
 
-    -- Show cursor
-    SetMouseCursorActiveThisFrame()
-
-    -- Get Raycast
-    local camCoords = GetCamCoord(self.cam)
-    local _, dir = Raycast.FromScreen()
-    local hitPos = Raycast.IntersectPlane(camCoords, dir, self.zHeight)
-
-    if hitPos then
-        -- Visualize (debug)
-        -- DrawMarker(28, hitPos.x, hitPos.y, hitPos.z, 0,0,0, 0,0,0, 0.05, 0.05, 0.05, 255, 0, 0, 200, false, false, 2, false, nil, nil, false)
-
-        -- Handle Click (Pick Up / Spawn)
-        if IsDisabledControlJustPressed(0, Controls.ATTACK) then
-            local bestDist = 0.15
-            local pickedDispenser = nil
-
-            -- Check Dispensers first (prioritize dispensers if essentially equidistant or overlapping?)
-            -- We'll just check closest overall.
-            for _, d in ipairs(self.dispensers) do
-                local dist = #(hitPos - GetEntityCoords(d.entity))
-                if dist < bestDist then
-                    bestDist = dist
-                    pickedDispenser = d
-                end
-            end
-
-            if pickedDispenser then
-                local newItem = self:SpawnItem(pickedDispenser.model, hitPos, pickedDispenser.key,
-                    pickedDispenser.physicsProxyModel)
-                self.draggedItem = newItem
-                self.dragOffset = vector3(0, 0, 0)
-            else
-                -- If not dispenser, check existing items
-                local closestDist = 0.15
-                local closestEntity = nil
-
-                for _, item in ipairs(self.items) do
-                    local dist = #(hitPos - GetEntityCoords(item.entity))
-                    if dist < closestDist then
-                        closestDist = dist
-                        closestEntity = item.entity
-                    end
-                end
-
-                if closestEntity then
-                    self.draggedItem = closestEntity
-                    self.dragOffset = GetEntityCoords(closestEntity) - hitPos
-                end
-            end
-        end
-
-        -- Handle Dragging
-        if IsDisabledControlPressed(0, Controls.ATTACK) and self.draggedItem then
-            if DoesEntityExist(self.draggedItem) then
-                local target = hitPos + self.dragOffset
-                -- Enforce Z plane height on target with a slight hover to prevent clipping/friction
-                local hoverHeight = 0.15
-                target = vector3(target.x, target.y, self.zHeight + hoverHeight)
-
-                if self.enableCollision then
-                    local current = GetEntityCoords(self.draggedItem)
-                    local diff = target - current
-                    -- P-Controller for velocity
-                    -- Higher multiplier = snappier but more potential for instability
-                    local responsiveness = 20.0
-                    local velocity = diff * responsiveness
-
-                    SetEntityVelocity(self.draggedItem, velocity.x, velocity.y, velocity.z)
-
-                    -- Dampen rotation to prevent crazy spinning while dragging
-                    -- We reduce angular velocity significantly while holding to keep it stable
-                    local rotVel = GetEntityRotationVelocity(self.draggedItem)
-                    SetEntityAngularVelocity(self.draggedItem, rotVel.x * 0.1, rotVel.y * 0.1, rotVel.z * 0.1)
-                else
-                    SetEntityCoords(self.draggedItem, target.x, target.y, self.zHeight, false, false, false, false)
-                end
-            else
-                self.draggedItem = nil
-            end
-        end
-
-        -- Handle Release
-        if IsDisabledControlJustReleased(0, Controls.ATTACK) then
-            if self.draggedItem and self.enableCollision then
-                -- Dampen throw velocity to prevent items flying too far
-                local vel = GetEntityVelocity(self.draggedItem)
-                SetEntityVelocity(self.draggedItem, vel.x * 0.5, vel.y * 0.5, vel.z * 0.5)
-            end
-            self.draggedItem = nil
-        end
-
-        -- Handle Right Click (Delete)
-        if IsDisabledControlJustPressed(0, Controls.AIM) then
-            local closestDist = 0.15
-            local matchIndex = -1
-
-            for i, item in ipairs(self.items) do
-                local dist = #(hitPos - GetEntityCoords(item.entity))
-                if dist < closestDist then
-                    closestDist = dist
-                    matchIndex = i
-                end
-            end
-
-            if matchIndex ~= -1 then
-                local item = self.items[matchIndex]
-                if DoesEntityExist(item.entity) then DeleteEntity(item.entity) end
-                if item.visualEntity and DoesEntityExist(item.visualEntity) then DeleteEntity(item.visualEntity) end
-                table.remove(self.items, matchIndex)
-            end
-        end
-    end
-
+---Internal: Handle global session controls (Finish/Cancel)
+function Session:HandleSessionControls()
     -- Finish
     if IsDisabledControlJustReleased(0, Controls.JUMP) then -- Space
         local resultKeys = {}
@@ -403,7 +301,7 @@ function Session:ProcessInput()
                 table.insert(resultKeys, item.key)
             end
         end
-        self.onFinish(resultKeys, self.items) -- Pass full items if listener wants coords
+        self.onFinish(resultKeys, self.items)
         self:Stop()
     end
 
@@ -412,6 +310,141 @@ function Session:ProcessInput()
         self:Stop()
         self.onCancel()
     end
+end
+
+---Internal: Handle Left Click
+function Session:HandleClick(hitPos)
+    local bestDist = 0.15
+    local pickedDispenser = nil
+
+    for _, d in ipairs(self.dispensers) do
+        local dist = #(hitPos - GetEntityCoords(d.entity))
+        if dist < bestDist then
+            bestDist = dist
+            pickedDispenser = d
+        end
+    end
+
+    if pickedDispenser then
+        local newItem = self:SpawnItem(pickedDispenser.model, hitPos, pickedDispenser.key,
+            pickedDispenser.physicsProxyModel)
+        self.draggedItem = newItem
+        self.dragOffset = vector3(0, 0, 0)
+    else
+        local closestDist = 0.15
+        local closestEntity = nil
+
+        for _, item in ipairs(self.items) do
+            local dist = #(hitPos - GetEntityCoords(item.entity))
+            if dist < closestDist then
+                closestDist = dist
+                closestEntity = item.entity
+            end
+        end
+
+        if closestEntity then
+            self.draggedItem = closestEntity
+            self.dragOffset = GetEntityCoords(closestEntity) - hitPos
+        end
+    end
+end
+
+---Internal: Handle Drag Update
+function Session:HandleDrag(hitPos)
+    if DoesEntityExist(self.draggedItem) then
+        local target = hitPos + self.dragOffset
+        local hoverHeight = 0.15
+        target = vector3(target.x, target.y, self.zHeight + hoverHeight)
+
+        if self.enableCollision then
+            local current = GetEntityCoords(self.draggedItem)
+            local diff = target - current
+            local responsiveness = 20.0
+            local velocity = diff * responsiveness
+            SetEntityVelocity(self.draggedItem, velocity.x, velocity.y, velocity.z)
+
+            local rotVel = GetEntityRotationVelocity(self.draggedItem)
+            SetEntityAngularVelocity(self.draggedItem, rotVel.x * 0.1, rotVel.y * 0.1, rotVel.z * 0.1)
+        else
+            SetEntityCoords(self.draggedItem, target.x, target.y, self.zHeight, false, false, false, false)
+        end
+    else
+        self.draggedItem = nil
+    end
+end
+
+---Internal: Handle Release
+function Session:HandleRelease()
+    if self.draggedItem and self.enableCollision then
+        local vel = GetEntityVelocity(self.draggedItem)
+        SetEntityVelocity(self.draggedItem, vel.x * 0.5, vel.y * 0.5, vel.z * 0.5)
+    end
+    self.draggedItem = nil
+end
+
+---Internal: Handle Delete (Right Click)
+function Session:HandleDelete(hitPos)
+    local closestDist = 0.15
+    local matchIndex = -1
+
+    for i, item in ipairs(self.items) do
+        local dist = #(hitPos - GetEntityCoords(item.entity))
+        if dist < closestDist then
+            closestDist = dist
+            matchIndex = i
+        end
+    end
+
+    if matchIndex ~= -1 then
+        local item = self.items[matchIndex]
+        if DoesEntityExist(item.entity) then DeleteEntity(item.entity) end
+        if item.visualEntity and DoesEntityExist(item.visualEntity) then DeleteEntity(item.visualEntity) end
+        table.remove(self.items, matchIndex)
+    end
+end
+
+---Internal: Handle Mouse Interaction (Drag & Drop)
+function Session:HandleInteraction()
+    SetMouseCursorActiveThisFrame()
+
+    local camCoords = GetCamCoord(self.cam)
+    local _, dir = Raycast.FromScreen()
+    local hitPos = Raycast.IntersectPlane(camCoords, dir, self.zHeight)
+
+    if hitPos then
+        -- Handle Click (Pick Up / Spawn)
+        if IsDisabledControlJustPressed(0, Controls.ATTACK) then
+            self:HandleClick(hitPos)
+        end
+
+        -- Handle Dragging
+        if IsDisabledControlPressed(0, Controls.ATTACK) and self.draggedItem then
+            self:HandleDrag(hitPos)
+        end
+
+        -- Handle Release
+        if IsDisabledControlJustReleased(0, Controls.ATTACK) then
+            self:HandleRelease()
+        end
+
+        -- Handle Right Click (Delete)
+        if IsDisabledControlJustPressed(0, Controls.AIM) then
+            self:HandleDelete(hitPos)
+        end
+    end
+end
+
+---Internal: Handle input tick
+function Session:ProcessInput()
+    self:DisableControls()
+    self:HandleDebug()
+    self:HandleSessionControls()
+
+    if self:HandleCamera() then
+        return
+    end
+
+    self:HandleInteraction()
 end
 
 ---Start the session loop
