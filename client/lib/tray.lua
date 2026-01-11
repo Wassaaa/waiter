@@ -130,14 +130,11 @@ function Tray:GetExportData(candidateItems)
             local itemEntity = item.entity
             local itemModel = GetEntityModel(itemEntity)
 
-            -- Calculate approximate item bottom center in world space
-            local iMin, _ = GetModelDimensions(itemModel)
+            -- Calculate approximate item position (Origin)
             local itemPos = GetEntityCoords(itemEntity)
 
-            local bottomPos = GetOffsetFromEntityInWorldCoords(itemEntity, 0.0, 0.0, iMin.z)
-
             -- Transform to tray local space
-            local localPos = GetOffsetFromEntityGivenWorldCoords(self.entity, bottomPos.x, bottomPos.y, bottomPos.z)
+            local localPos = GetOffsetFromEntityGivenWorldCoords(self.entity, itemPos.x, itemPos.y, itemPos.z)
 
             -- Check if point is within tray bounding box
             local inX = localPos.x >= minX and localPos.x <= maxX

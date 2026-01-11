@@ -363,7 +363,7 @@ function Session:HandleCamera()
     end
 
     if self.cameraMode then
-        local sensitivity = 4.0
+        local sensitivity = 1.0
         local dx = GetDisabledControlNormal(0, Controls.LOOK_LR) * sensitivity
         local dy = GetDisabledControlNormal(0, Controls.LOOK_UD) * sensitivity
 
