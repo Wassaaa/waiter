@@ -91,6 +91,7 @@ function StartTrayBuilding()
     -- Start
     lib.showTextUI(
         '[Left Click] Drag Items  \n' ..
+        '[Scroll] Adjust Height  \n' ..
         '[Right Click] Remove Item  \n' ..
         '[G] Camera  \n' ..
         '[H] Debug  \n' ..

@@ -54,6 +54,7 @@ end
 ---@field orbitAngle number Azimuth angle (radians)
 ---@field orbitPitch number Elevation angle (radians)
 ---@field debugMode boolean Show debug visuals
+---@field dragZOffset number Vertical offset for drag
 local Session = {}
 Session.__index = Session
 
@@ -74,6 +75,7 @@ function DragDrop.NewSession(config)
     self.enableCollision = config.enableCollision or false
     self.physicsHostModel = config.physicsHostModel
     self.debugMode = false
+    self.dragZOffset = 0.0
 
     -- Orbit Camera State
     self.cameraMode = false
@@ -230,6 +232,8 @@ function Session:DisableControls()
     DisableControlAction(0, Controls.JUMP, true)
     DisableControlAction(0, Controls.DETONATE, true)
     DisableControlAction(0, Controls.VEH_HEADLIGHT, true)
+    DisableControlAction(0, Controls.CURSOR_SCROLL_UP, true)
+    DisableControlAction(0, Controls.CURSOR_SCROLL_DOWN, true)
 end
 
 ---Internal: Handle Debug Mode logic
@@ -330,6 +334,7 @@ function Session:HandleClick(hitPos)
             pickedDispenser.physicsProxyModel)
         self.draggedItem = newItem
         self.dragOffset = vector3(0, 0, 0)
+        self.dragZOffset = 0.0
     else
         local closestDist = 0.15
         local closestEntity = nil
@@ -345,16 +350,24 @@ function Session:HandleClick(hitPos)
         if closestEntity then
             self.draggedItem = closestEntity
             self.dragOffset = GetEntityCoords(closestEntity) - hitPos
+            self.dragZOffset = 0.0
         end
     end
 end
 
 ---Internal: Handle Drag Update
 function Session:HandleDrag(hitPos)
+    -- Handle Scroll for Z-Axis
+    if IsDisabledControlJustPressed(0, Controls.CURSOR_SCROLL_UP) then
+        self.dragZOffset = self.dragZOffset + 0.05
+    elseif IsDisabledControlJustPressed(0, Controls.CURSOR_SCROLL_DOWN) then
+        self.dragZOffset = self.dragZOffset - 0.05
+    end
+
     if DoesEntityExist(self.draggedItem) then
         local target = hitPos + self.dragOffset
         local hoverHeight = 0.15
-        target = vector3(target.x, target.y, self.zHeight + hoverHeight)
+        target = vector3(target.x, target.y, self.zHeight + hoverHeight + self.dragZOffset)
 
         if self.enableCollision then
             local current = GetEntityCoords(self.draggedItem)
@@ -363,10 +376,27 @@ function Session:HandleDrag(hitPos)
             local velocity = diff * responsiveness
             SetEntityVelocity(self.draggedItem, velocity.x, velocity.y, velocity.z)
 
-            local rotVel = GetEntityRotationVelocity(self.draggedItem)
-            SetEntityAngularVelocity(self.draggedItem, rotVel.x * 0.1, rotVel.y * 0.1, rotVel.z * 0.1)
+            -- Upright Controller (Pitch/Roll -> 0)
+            local rot = GetEntityRotation(self.draggedItem, 2)
+            local angVel = GetEntityRotationVelocity(self.draggedItem)
+
+            -- We want angle to be 0. Error = 0 - angle.
+            -- Using a simple P-element proportional to angle error (in degrees, converted scaling)
+            -- Tune these values for "smooth but upright"
+            local uprightStrength = 0.2 -- Strength of correction
+            local yawDamp = 0.1         -- Dampen Yaw spin
+
+            -- Calculate desired angular velocity to correct error
+            local targetVelX = (0.0 - rot.x) * uprightStrength
+            local targetVelY = (0.0 - rot.y) * uprightStrength
+
+            -- Apply (overwriting current works best for stability in this loop)
+            -- We keep Z velocity low to prevent spinning but allow some automatic settling
+            SetEntityAngularVelocity(self.draggedItem, targetVelX, targetVelY, angVel.z * yawDamp)
         else
-            SetEntityCoords(self.draggedItem, target.x, target.y, self.zHeight, false, false, false, false)
+            SetEntityCoords(self.draggedItem, target.x, target.y, target.z, false, false, false, false)
+            local curRot = GetEntityRotation(self.draggedItem, 2)
+            SetEntityRotation(self.draggedItem, 0, 0, curRot.z, 2, true)
         end
     else
         self.draggedItem = nil
